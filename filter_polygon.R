@@ -1,6 +1,6 @@
 # Katja Seltmann, 2020
 # Script to map occurrence records of species (lat/long) that occur only within the boundries of Coal Oil Point Reserve (shp file)
-# COPR occurrence records: https://ucsb.box.com/s/7xp88xhg1xn7decsv0t3ll8du653deub
+# COPR occurrence records in tab-delimited format: https://ucsb.box.com/s/7xp88xhg1xn7decsv0t3ll8du653deub
 # COPR boundary files: https://ucsb.box.com/s/nd1s0e3ted8zsu0ir4wbxu7qpe94ht8o
 
 
@@ -40,10 +40,9 @@ copr_boundary_2020 <- st_read("COPR/COPR_Boundary_2010/COPR_boundary2010.shp")
 #reset with new plot when needed
 plot.new()
 
-#graph boundry and points
-ggplot() + 
-  geom_sf(data = copr_boundary_2020, size = 3, color = "black", fill = "cyan1") + ggtitle("COPR Boundary Plot") +
-  geom_sf(data = specimen_data_less)
+#graph boundary and points
+ggplot(data = copr_boundary_2020) + 
+  geom_point(data = specimen_data_less, aes(x = decimalLongitude, y = decimalLatitude), shape = 1)
 
      
 
