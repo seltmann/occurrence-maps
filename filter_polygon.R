@@ -25,8 +25,11 @@ specimen_data <- subset(specimen_data, !is.na(order) & !is.na(decimalLongitude) 
 #print data dimensions
 dim(specimen_data)
 
-#remove columns and rows for smaller test dataset and limit to only 100 rows for testing
-specimen_data_less <-specimen_data[1:100,c(1,60,64,99,133,134,194,195,230,183)]
+#remove columns and rows for smaller test dataset that only includes long and lat, and limit to only 100 rows for testing
+#column decimalLongitude = 134
+#column decimalLatitude = 133
+specimen_data_less <-specimen_data[1:100,c(134,133)]
+head(specimen_data_less)
 
 #print dimensions of new dataset
 dim(specimen_data_less)
@@ -37,17 +40,10 @@ copr_boundary_2020 <- st_read("COPR/COPR_Boundary_2010/COPR_boundary2010.shp")
 #reset with new plot when needed
 plot.new()
 
-#graph with boundry
+#graph boundry and points
 ggplot() + 
-  geom_sf(data = copr_boundary_2020, size = 3, color = "black", fill = "cyan1") + ggtitle("COPR Boundary Plot") + 
-  coord_sf()
-
-
-ggplot() + 
-geom_sf(data = copr_boundary_2020, size = 3, color = "black", fill = "cyan1", clip = TRUE) +
-ggtitle("COPR Boundary Plot")
-
-help(geom_sf)
+  geom_sf(data = copr_boundary_2020, size = 3, color = "black", fill = "cyan1") + ggtitle("COPR Boundary Plot") +
+  geom_sf(data = specimen_data_less)
 
      
 
