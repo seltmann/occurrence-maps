@@ -40,10 +40,19 @@ dim(specimen_data_less)
 #read boundary from shp file
 copr_boundary_2020 <- st_read("COPR/COPR_Boundary_2010/COPR_boundary2010.shp")
 
+#draw boundary from shp file
+ggplot() +
+  geom_sf(data = copr_boundary_2020, fill = "palegreen", color = "black")
+
 #graph boundary and points
-ggplot(data = copr_boundary_2020) + 
+ggplot(data = copr_boundary_2020) +
   geom_point(data = specimen_data_less, aes(x = decimalLongitude, y = decimalLatitude), shape = 1)
 
+#combine the two? This does not work!
+ggplot() +
+  geom_sf(data = copr_boundary_2020, fill = "palegreen", color = "black") +
+  geom_point(data = specimen_data_less, aes(x = decimalLongitude, y = decimalLatitude), shape = 1)
+  
 
 
 
