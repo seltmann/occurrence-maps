@@ -1,6 +1,5 @@
 ## occurrence-maps
 
-
 [```Citation```](#Citation) / [```Filter Polygon```](#filter-polygon)
 
 ### Description
@@ -10,7 +9,7 @@ This GitHub repository for scripts that map occurrence records, either from obse
 ### Citation
 Started by Katja Seltmann, 2021 (add your names here)
 
-### filter polygon
+### Filter Polygon
 
 Script to map occurrence records of species (lat/long) that occur only within the boundaries of Coal Oil Point Reserve (shp file)
 
