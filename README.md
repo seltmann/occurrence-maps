@@ -17,7 +17,8 @@ Script to map occurrence records of species (lat/long) that occur only within th
 
 *requirements*
 
-The test occurrence records from Coal Oil Point Researve and COPR boundry file should be downloaded and placed in the 
-COPR occurrence records in tab-delimited format: https://ucsb.box.com/s/7xp88xhg1xn7decsv0t3ll8du653deub
+The test occurrence records from Coal Oil Point Researve and COPR boundry file are also available on Box. 
+
+COPR test occurrence records: https://ucsb.box.com/s/7xp88xhg1xn7decsv0t3ll8du653deub
 
 COPR boundary files: https://ucsb.box.com/s/nd1s0e3ted8zsu0ir4wbxu7qpe94ht8o
