@@ -1,7 +1,6 @@
 ## occurrence-maps
 
 
-
 [```Citation```](#Citation) / [```Filter Polygon```](#filter-polygon)
 
 ### Description
