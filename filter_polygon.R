@@ -1,4 +1,4 @@
-# Katja Seltmann, 2020
+# started by Katja Seltmann, 2020
 # Script to map occurrence records of species (lat/long) that occur only within the boundaries of Coal Oil Point Reserve (shp file)
 # COPR occurrence records in tab-delimited format: https://ucsb.box.com/s/7xp88xhg1xn7decsv0t3ll8du653deub
 # COPR boundary files: https://ucsb.box.com/s/nd1s0e3ted8zsu0ir4wbxu7qpe94ht8o
@@ -48,7 +48,7 @@ ggplot() +
 ggplot(data = copr_boundary_2020) +
   geom_point(data = specimen_data_less, aes(x = decimalLongitude, y = decimalLatitude), shape = 1)
 
-#combine the two? This does not work!
+#combine the two? This does not work!!!
 ggplot() +
   geom_sf(data = copr_boundary_2020, fill = "palegreen", color = "black") +
   geom_point(data = specimen_data_less, aes(x = decimalLongitude, y = decimalLatitude), shape = 1)
