@@ -24,6 +24,8 @@ library(ggplot2)
 library(maptools)
 library(sf)
 library(maps)
+library(raster)
+library(rgdal)
 
 ```
 
@@ -43,12 +45,16 @@ dim(specimen_data)
 ```{r}
 #remove rows where lat/long do not exist
 specimen_data <- subset(specimen_data, !is.na(order) & !is.na(decimalLongitude) & !is.na(decimalLatitude))
+
+
 ```
 
 
 ```{r}
 #print data dimensions
 dim(specimen_data)
+
+
 ```
 
 
@@ -57,6 +63,7 @@ dim(specimen_data)
 
 #column decimalLongitude = 134
 #column decimalLatitude = 133
+
 specimen_data_less <-specimen_data[1:100,c(134,133)]
 head(specimen_data_less)
 ```
@@ -71,6 +78,12 @@ dim(specimen_data_less)
 ```{r}
 #read boundary from shp file
 copr_boundary_2020 <- st_read("COPR_Boundary_2010/COPR_boundary2010.shp")
+
+#What is the projection of copr_boundary_2020
+
+crs(copr_boundary_2020) #Projection is lcc...not sure what this is: https://en.wikipedia.org/wiki/Lambert_conformal_conic_projection 
+
+extent(copr_boundary_2020) #so this is in lat long, but not decimal formatting (degrees)
 ```
 
 
@@ -86,13 +99,60 @@ ggplot() +
 ggplot(data = copr_boundary_2020) +
   geom_point(data = specimen_data_less, aes(x = decimalLongitude, y = decimalLatitude), shape = 1)
 ```
+```{r}
+#Conversion to a shapefile?
+
+str(specimen_data)
+
+names(specimen_data_less)
+
+head(specimen_data_less)
+
+spec_CRS <- st_crs(specimen_data_less)
+
+crs(spec_CRS) #NA...not what we want. 
+
+specimen_data_less_longlat_crs <- specimen_data_less
+
+
+
+#Prehaps we need to assign a Rasterlayer to this? 
+specimen_data_less_longlat_crs <- crs("+proj=longlat +datum=NAD83 +no_defs +ellps=WGS84 +towgs84=0,0,0")
+
+crs(specimen_data_less_longlat_crs)
+
+plot_locations_specimen <- st_as_sf(specimen_data_less_longlat_crs, coords = c("decimalLongitude", "decimalLatitude"), crs = longlat)
+```
+
 
 
 ```{r}
-#combine the two? This does not work!!! Have fun JT!!
+#Since the species data is in degrees decimal format, reprojecting it to standard Lat/Long may be the answer
+specimen_data_less_reproj <- projectRaster(specimen_data_less_longlat_crs, 
+                                           crs = crs(copr_boundary_2020))
+#Wont work, maybe other way?
+
+copr_boundary_2020_reproj <- projectRaster(copr_boundary_2020,
+                                           crs = crs(specimen_data_less_longlat_crs))
+
+
+```
+
+
+```{r}
+#This did not work due to unspecified CRS, so maybe look into metadata and find how to specify this? Or look for an alternative method. 
 ggplot() +
   geom_sf(data = copr_boundary_2020, fill = "palegreen", color = "black") +
-  geom_point(data = specimen_data_less, aes(x = decimalLongitude, y = decimalLatitude), shape = 1)
+  geom_point(data = plot_locations_specimen, aes(x = x, y = y), shape = 1)
+```
+
+```{r}
+#combine the two? This does not work!!! Have fun JT!!
+
+specimen_data_less_df <- as.data.frame(specimen_data_less, xy = TRUE) #Worth a shot 
+ggplot() +
+  geom_sf(data = copr_boundary_2020, fill = "palegreen", color = "black") +
+  geom_point(data = specimen_data_less_df, aes(x = decimalLongitude, y = decimalLatitude), shape = 1)
 ```
 
   
