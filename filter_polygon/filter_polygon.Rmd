@@ -40,6 +40,8 @@ specimen_data <- read.delim(file="occurrence.txt",header=TRUE)
 #print data dimensions
 dim(specimen_data)
 
+names(specimen_data)
+
 ```
 
 ```{r}
@@ -66,6 +68,7 @@ dim(specimen_data)
 
 specimen_data_less <-specimen_data[1:100,c(134,133)]
 head(specimen_data_less)
+
 ```
 
 
@@ -94,13 +97,21 @@ ggplot() +
 ```
 
 
+
 ```{r}
 #graph boundary and points
 ggplot(data = copr_boundary_2020) +
   geom_point(data = specimen_data_less, aes(x = decimalLongitude, y = decimalLatitude), shape = 1)
+
+ggplot(data = copr_boundary_2020) +
+  geom_point(data = specimen_data_less2, aes(x = decimalLongitude, y = decimalLatitude), shape = 1)
+
 ```
+
+
+
 ```{r}
-#Conversion to a shapefile?
+#Lets try to figure out what the specimen data is 
 
 str(specimen_data)
 
@@ -114,45 +125,90 @@ crs(spec_CRS) #NA...not what we want.
 
 specimen_data_less_longlat_crs <- specimen_data_less
 
+#We can't access a cRS for the specimen data...
+
+#Perhaps we need to assign a Rasterlayer to this? 
+#crs(specimen_data_less_longlat_crs) <- "+proj=lcc +lat_1=35.46666666666667 +lat_2=34.03333333333333 +lat_0=33.5 +lon_0=-118 +x_0=2000000.0001016 +y_0=500000.0001016001 +ellps=GRS80 +datum=NAD83 +to_meter=0.3048006096012192 +no_defs"
+#Not confident that these are the correct parameters, gotta double check this 
 
 
-#Prehaps we need to assign a Rasterlayer to this? 
-specimen_data_less_longlat_crs <- crs("+proj=longlat +datum=NAD83 +no_defs +ellps=WGS84 +towgs84=0,0,0")
+```
+```{r}
+#Conversion from a txt file to a shapefile?
 
-crs(specimen_data_less_longlat_crs)
+names(specimen_data_less)
 
-plot_locations_specimen <- st_as_sf(specimen_data_less_longlat_crs, coords = c("decimalLongitude", "decimalLatitude"), crs = longlat)
+head(specimen_data_less)
+
+#Locating the same area using the CRS from the boundary data...not sure if this is the correct method.
+#https://www.spatialreference.org/ref/epsg/2229/proj4/ 
+
+
+latlong_crs <- st_crs(specimen_data_less)
+
+latlong_crs #Returns NA...
+
+boundary_crs <- st_crs(copr_boundary_2020)
+boundary_crs #Returns a valid CRS
+
+#Maybe try using this CRS to conform?
+
+specimen_data_less_bounded <- st_as_sf(specimen_data_less, coords = c("decimalLongitude", "decimalLatitude"), 
+                                       crs = boundary_crs)
+
+
+
+```
+
+```{r}
+#Specimen Locations 
+
+ggplot() +
+  #geom_sf(data = copr_boundary_2020) +
+  geom_sf(data=specimen_data_less_bounded) +
+  ggtitle("Map of Specimen Locations")
+```
+
+```{r}
+#Lets try cropping?
+
+Specimen_data_cropped <- crop(x=specimen_data_less_bounded, y = copr_boundary_2020) #Cropping definitely does not work. 
+
 ```
 
 
 
-```{r}
-#Since the species data is in degrees decimal format, reprojecting it to standard Lat/Long may be the answer
-specimen_data_less_reproj <- projectRaster(specimen_data_less_longlat_crs, 
-                                           crs = crs(copr_boundary_2020))
-#Wont work, maybe other way?
-
-copr_boundary_2020_reproj <- projectRaster(copr_boundary_2020,
-                                           crs = crs(specimen_data_less_longlat_crs))
-
-
-```
-
 
 ```{r}
-#This did not work due to unspecified CRS, so maybe look into metadata and find how to specify this? Or look for an alternative method. 
+#combine the two? This does not work!!! Have fun JT!!
 ggplot() +
   geom_sf(data = copr_boundary_2020, fill = "palegreen", color = "black") +
-  geom_point(data = plot_locations_specimen, aes(x = x, y = y), shape = 1)
+  geom_point(data = specimen_data_less, aes(x = decimalLongitude, y = decimalLatitude), shape = 1)
+  
 ```
+
+
+
+
+
+
+
+
+
+
+
+
 
 ```{r}
 #combine the two? This does not work!!! Have fun JT!!
 
-specimen_data_less_df <- as.data.frame(specimen_data_less, xy = TRUE) #Worth a shot 
+#So the problem seems to be that we are looking at 2 different types of lat/long coordinates. One is in degrees and the other in full integers. We need to convert one to the other in order for the points to show up on the graph. 
+
+#specimen_data_less_df <- as.data.frame(specimen_data_less, xy = TRUE) #Worth a shot
 ggplot() +
-  geom_sf(data = copr_boundary_2020, fill = "palegreen", color = "black") +
-  geom_point(data = specimen_data_less_df, aes(x = decimalLongitude, y = decimalLatitude), shape = 1)
+   geom_sf(data = specimen_data_less_bounded) +
+  geom_sf(data = copr_boundary_2020, fill = "palegreen", color = "black") 
+  
 ```
 
   
