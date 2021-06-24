@@ -80,18 +80,29 @@ dim(specimen_data_less)
 
 ```{r}
 #read boundary from shp file
-copr_boundary_2020 <- st_read("COPR_Boundary_2010/COPR_boundary2010.shp")
+copr_boundary_2020 <- st_read("COPR_Boundary_2010/COPR_boundary2010.shp") #Vector type. 
 
 copr_boundary_2020
 #What is the projection of copr_boundary_2020
 
-crs(copr_boundary_2020) #Projection is lcc...not sure what this is: https://en.wikipedia.org/wiki/Lambert_conformal_conic_projection 
+#Global datum is NAD83. California zone 5 is code: ESPG:2229. 
 
+st_geometry_type(copr_boundary_2020) #18 levels, MultiPolygon
 
-extent(copr_boundary_2020) #so this is in lat long, but not decimal formatting (degrees)
+st_crs(copr_boundary_2020) #Projection is lcc...not sure what this is: https://en.wikipedia.org/wiki/Lambert_conformal_conic_projection 
+
+#so this is in lat long, but not decimal formatting (degrees)
+
+extent(copr_boundary_2020) 
+
+st_bbox(copr_boundary_2020) #Same thing as above just easier formatting on the boundary edges. 
 
 head(copr_boundary_2020)
+#Seems there is only one feature, therefore we can't split it up in any meaningful way to look at individual parts. 
+
+names(copr_boundary_2020)
 ```
+
 
 
 ```{r}
@@ -100,6 +111,11 @@ ggplot() +
   geom_sf(data = copr_boundary_2020, fill = "palegreen", color = "black")
 
 
+```
+```{r}
+###Trim data to Coil Oil Point Reserve 
+
+specimen_bounded <- map(copr_boundary_2020, Xcol = 5993354, ycol = 1975712)
 ```
 
 
@@ -113,29 +129,6 @@ ggplot(data = copr_boundary_2020) +
 
 ```
 
-
-
-
-
-
-
-```{r}
-#Lets try cropping?
-
-Specimen_data_cropped <- crop(x=specimen_data_less_bounded, y = copr_boundary_2020) #Cropping definitely does not work. 
-
-```
-
-
-
-
-```{r}
-#combine the two? This does not work!!! Have fun JT!!
-ggplot() +
-  geom_sf(data = copr_boundary_2020, fill = "palegreen", color = "black") +
-  geom_point(data = specimen_data_less, aes(x = decimalLongitude, y = decimalLatitude), shape = 1)
-  
-```
 ```{r}
 #Making df to try and plot
 copr_boundary_2020_df <- as.data.frame(copr_boundary_2020, xy=TRUE)
@@ -144,9 +137,98 @@ specimen_data_less_df <- as.data.frame(specimen_data_less, xy=TRUE)
 ```
 
 ```{r}
+#We can create a perimeter of the boundaries using just the extant, however this loses our other perimeter cutoffs, so probably unhelpful in the long run. 
+ggplot() +
+  geom_sf(data = st_as_sfc(st_bbox(copr_boundary_2020)), fill = "green", alpha = 0.2) 
+  #geom_point(specimen_data_less_df,aes(x = decimalLongitude, y = decimalLatitude, shape= 1))
+```
+```{r}
+#Prehaps trying the function trimdata()? 
+
+#This function seems to only work with already defined maps, so probably not a sol'n 
+
+map(corp_boundary_2020)
+trimdata(data = st_as_sfc(st_bbox(copr_boundary_2020)))
+```
+```{r}
+#Define the extent of the copr_boundary_2020
+extent(copr_boundary_2020)
+e <- extent(5993354, 5996966, 1975712, 1979692)
+class(e)
+
+cropped_data <- crop(x=e, y = specimen_data_less) #Does not work, assuming this is because both need to be Raster objects for the crop function to work on them. 
+```
+
+```{r}
+#Trying extract, but pretty sure this needs to be in Raster form
+
+specimen_extract <- extract(x = specimen_data_less, y = copr_boundary_2020, df = TRUE)
+```
+
+
+
+```{r}
+#Lets try cropping?
+
+Specimen_data_cropped <- crop(x=specimen_data_less, y =copr_boundary_2020) #Cropping wont work. Needs to be Raster?
+
+
+copr_cropped <- st_crop(copr_boundary_2020, xmin = 5993354, xmax = 5996966, ymin = 1975712, ymax = 1979692 )
+
+ggplot() +
+  geom_sf(data = copr_cropped)
+```
+```{r}
+ggplot() +
+  geom_point(data =specimen_data_less, aes(x = decimalLongitude, y = decimalLatitude), shape = 1) +
+  geom_sf(data = copr_cropped) +
+  
+  coord_sf(xlim = c(5993354, 5996966), ylim = c(1975712, 1979692))
+ 
+```
+
+
+```{r}
+#combine the two? This does not work!!! Have fun JT!!
+ggplot() +
+  geom_sf(data = copr_boundary_2020, fill = "palegreen", color = "black") +
+  geom_point(data = specimen_data_less_ab, aes(x = decimalLongitude, y = decimalLatitude), shape = 1) +
+  coord_sf(xlim = c(5993354, 5996966), ylim = c(1975712, 1979692))
+
+#Adding restrictions in coord_sf() at least shows us the actual plot once again, however we still arent seeing the points... 
+  
+```
+
+```{r}
+#Longitude is negative so maybe thats messing with it? Just in case lets abs to see what the graph gives us 
+specimen_data_less_ab <- abs(specimen_data_less)
+```
+
+
+
+
+```{r}
+#Same limits as earlier with the addition of the abs data on longitude 
+ggplot() +
+  geom_sf(data = copr_boundary_2020, fill = "palegreen", color = "black") +
+  geom_point(data = specimen_data_less_ab, aes(x = decimalLongitude, y = decimalLatitude), shape = 1) +
+  coord_sf(xlim = c(5993354, 5996966), ylim = c(1975712, 1979692))
+
+#Adding restrictions in coord_sf() at least shows us the actual plot once again, however we still arent seeing the points... 
+  
+```
+
+
+
+```{r}
 #combine the two? This does not work!!! Have fun JT!!
 ggplot() + 
-  geom_sf(data = copr_boundary_2020, fill = "palegreen", color = "black") + 
+  geom_sf(
+  data = NULL,
+  stat = "sf",
+  na.rm = FALSE,
+  inherit.aes = TRUE,) + 
+  geom_sf(data = copr_boundary_2020, fill = "palegreen", color = "black") +
   geom_point(data = specimen_data_less, mapping = aes(x = decimalLongitude, y = decimalLatitude), colour = "red") 
   
 ```
