@@ -82,11 +82,15 @@ dim(specimen_data_less)
 #read boundary from shp file
 copr_boundary_2020 <- st_read("COPR_Boundary_2010/COPR_boundary2010.shp")
 
+copr_boundary_2020
 #What is the projection of copr_boundary_2020
 
 crs(copr_boundary_2020) #Projection is lcc...not sure what this is: https://en.wikipedia.org/wiki/Lambert_conformal_conic_projection 
 
+
 extent(copr_boundary_2020) #so this is in lat long, but not decimal formatting (degrees)
+
+head(copr_boundary_2020)
 ```
 
 
@@ -94,6 +98,8 @@ extent(copr_boundary_2020) #so this is in lat long, but not decimal formatting (
 #draw boundary from shp file
 ggplot() +
   geom_sf(data = copr_boundary_2020, fill = "palegreen", color = "black")
+
+
 ```
 
 
@@ -103,71 +109,15 @@ ggplot() +
 ggplot(data = copr_boundary_2020) +
   geom_point(data = specimen_data_less, aes(x = decimalLongitude, y = decimalLatitude), shape = 1)
 
-ggplot(data = copr_boundary_2020) +
-  geom_point(data = specimen_data_less2, aes(x = decimalLongitude, y = decimalLatitude), shape = 1)
-
-```
-
-
-
-```{r}
-#Lets try to figure out what the specimen data is 
-
-str(specimen_data)
-
-names(specimen_data_less)
-
-head(specimen_data_less)
-
-spec_CRS <- st_crs(specimen_data_less)
-
-crs(spec_CRS) #NA...not what we want. 
-
-specimen_data_less_longlat_crs <- specimen_data_less
-
-#We can't access a cRS for the specimen data...
-
-#Perhaps we need to assign a Rasterlayer to this? 
-#crs(specimen_data_less_longlat_crs) <- "+proj=lcc +lat_1=35.46666666666667 +lat_2=34.03333333333333 +lat_0=33.5 +lon_0=-118 +x_0=2000000.0001016 +y_0=500000.0001016001 +ellps=GRS80 +datum=NAD83 +to_meter=0.3048006096012192 +no_defs"
-#Not confident that these are the correct parameters, gotta double check this 
-
-
-```
-```{r}
-#Conversion from a txt file to a shapefile?
-
-names(specimen_data_less)
-
-head(specimen_data_less)
-
-#Locating the same area using the CRS from the boundary data...not sure if this is the correct method.
-#https://www.spatialreference.org/ref/epsg/2229/proj4/ 
-
-
-latlong_crs <- st_crs(specimen_data_less)
-
-latlong_crs #Returns NA...
-
-boundary_crs <- st_crs(copr_boundary_2020)
-boundary_crs #Returns a valid CRS
-
-#Maybe try using this CRS to conform?
-
-specimen_data_less_bounded <- st_as_sf(specimen_data_less, coords = c("decimalLongitude", "decimalLatitude"), 
-                                       crs = boundary_crs)
-
 
 
 ```
 
-```{r}
-#Specimen Locations 
 
-ggplot() +
-  #geom_sf(data = copr_boundary_2020) +
-  geom_sf(data=specimen_data_less_bounded) +
-  ggtitle("Map of Specimen Locations")
-```
+
+
+
+
 
 ```{r}
 #Lets try cropping?
@@ -186,10 +136,33 @@ ggplot() +
   geom_point(data = specimen_data_less, aes(x = decimalLongitude, y = decimalLatitude), shape = 1)
   
 ```
+```{r}
+#Making df to try and plot
+copr_boundary_2020_df <- as.data.frame(copr_boundary_2020, xy=TRUE)
+
+specimen_data_less_df <- as.data.frame(specimen_data_less, xy=TRUE)
+```
+
+```{r}
+#combine the two? This does not work!!! Have fun JT!!
+ggplot() + 
+  geom_sf(data = copr_boundary_2020, fill = "palegreen", color = "black") + 
+  geom_point(data = specimen_data_less, mapping = aes(x = decimalLongitude, y = decimalLatitude), colour = "red") 
+  
+```
+```{r}
+ggplot() +
+  geom_point(data = specimen_data_less_df, aes(x=decimalLongitude, y = decimalLatitude), shape = 1) +
+  coord_quickmap() + 
+ geom_sf(data = copr_boundary_2020_df, aes(geometry = geometry), fill = "palegreen", color = "black")
+```
 
 
-
-
+```{r}
+ggplot(copr_boundary_2020, aes(x=x, y=y)) +
+  geom_polygon(fill = "green", colour = "grey50") +
+  coord_quickmap()
+```
 
 
 
