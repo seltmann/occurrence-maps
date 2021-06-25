@@ -26,7 +26,7 @@ library(sf)
 library(maps)
 library(raster)
 library(rgdal)
-
+library(dplyr)
 ```
 
 
@@ -69,6 +69,13 @@ dim(specimen_data)
 specimen_data_less <-specimen_data[1:100,c(134,133)]
 head(specimen_data_less)
 
+
+specimen_data_proj <- specimen_data[1:1000, c(137)]
+
+specimen_data_proj
+
+specimen_crs <- specimen_data %>% 
+  dplyr::select(decimalLatitude, decimalLongitude, verbatimCoordinateSystem )
 ```
 
 
@@ -117,6 +124,13 @@ ggplot() +
 
 specimen_bounded <- map(copr_boundary_2020, Xcol = 5993354, ycol = 1975712)
 ```
+```{r}
+
+
+boundary_crs <- st_crs(copr_boundary_2020)
+
+boundary_crs
+```
 
 
 
@@ -140,7 +154,7 @@ specimen_data_less_df <- as.data.frame(specimen_data_less, xy=TRUE)
 #We can create a perimeter of the boundaries using just the extant, however this loses our other perimeter cutoffs, so probably unhelpful in the long run. 
 ggplot() +
   geom_sf(data = st_as_sfc(st_bbox(copr_boundary_2020)), fill = "green", alpha = 0.2) 
-  #geom_point(specimen_data_less_df,aes(x = decimalLongitude, y = decimalLatitude, shape= 1))
+  #geom_point(data = specimen_data_less, aes(x = decimalLongitude, y = decimalLatitude), shape = 1) 
 ```
 ```{r}
 #Prehaps trying the function trimdata()? 
@@ -163,6 +177,7 @@ cropped_data <- crop(x=e, y = specimen_data_less) #Does not work, assuming this 
 #Trying extract, but pretty sure this needs to be in Raster form
 
 specimen_extract <- extract(x = specimen_data_less, y = copr_boundary_2020, df = TRUE)
+
 ```
 
 
@@ -180,7 +195,7 @@ ggplot() +
 ```
 ```{r}
 ggplot() +
-  geom_point(data =specimen_data_less, aes(x = decimalLongitude, y = decimalLatitude), shape = 1) +
+  geom_point(data =specimen_data_less, aes(x = decimalLongitude, y = decimalLatitude), shape = 1, color = "red") +
   geom_sf(data = copr_cropped) +
   
   coord_sf(xlim = c(5993354, 5996966), ylim = c(1975712, 1979692))
@@ -264,6 +279,69 @@ ggplot() +
    geom_sf(data = specimen_data_less_bounded) +
   geom_sf(data = copr_boundary_2020, fill = "palegreen", color = "black") 
   
+```
+```{r}
+###Converting to a shp file to see if we can get these points within the same CRS. 
+
+
+
+#make the txt. file into its own shp file > change/set shp file to the vector boundary 
+
+boundary_crs <- crs(copr_boundary_2020)
+
+boundary_crs
+
+class(boundary_crs)
+
+specimen_locations_crs_conversion <- SpatialPointsDataFrame(specimen_data_less[,1:2], specimen_data_less, proj4string = boundary_crs)
+
+crs(specimen_locations_crs_conversion) #CRS now matches 
+
+specimen_locations_crs_conversion_df <- as.data.frame(specimen_locations_crs_conversion)
+
+```
+
+```{r}
+ggplot() +
+  geom_sf(data = specimen_locations_crs_conversion_df, aes(x = decimalLongitude, y = decimalLatitude), shape = 1)
+
+#Missing geometry
+```
+```{r}
+boundary_crs <- crs(copr_boundary_2020)
+
+boundary_crs
+
+specimen_data_less_shp <- st_as_sf(specimen_data_less, coords = c("decimalLongitude", "decimalLatitude"), 
+                                   crs = boundary_crs)
+
+crs(specimen_data_less_shp)
+```
+```{r}
+#Yep same result as last time...The points change too much. 
+ggplot() +
+  geom_sf(specimen_data_less_shp, mapping = aes(geometry = geometry)) 
+  #geom_sf(data = copr_boundary_2020, fill = "palegreen", color = "black") 
+
+extent(specimen_data_less_shp)  #It appears maybe our extents are messing with the plotting?
+extent(copr_boundary_2020)
+  
+```
+```{r}
+#Lets mess with the extent
+
+#convert to latlong nondegrees format?
+specimen_data_less_shp1 <- specimen_data_less_shp
+crs(specimen_data_less_shp1) <- "+proj=lcc +lat_1=35.46666666666667 +lat_2=34.03333333333333 +lat_0=33.5 +lon_0=-118 +x_0=2000000.0001016 +y_0=500000.0001016001 +ellps=GRS80 +datum=NAD83 +to_meter=0.3048006096012192 +no_defs"
+
+x_spec <- projectRaster(specimen_data_less_shp1, crs = '+proj=lcc +lat_1=35.46666666666667 +lat_2=34.03333333333333 +lat_0=33.5 +lon_0=-118 +x_0=2000000.0001016 +y_0=500000.0001016001 +ellps=GRS80 +datum=NAD83 +to_meter=0.3048006096012192 +no_defs')
+```
+```{r}
+#Baseplot method
+
+extent(specimen_data_less_shp)  
+extent(copr_boundary_2020)
+
 ```
 
   
