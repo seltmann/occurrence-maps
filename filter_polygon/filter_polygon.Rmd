@@ -107,7 +107,7 @@ st_bbox(copr_boundary_2020) #Same thing as above just easier formatting on the b
 head(copr_boundary_2020)
 #Seems there is only one feature, therefore we can't split it up in any meaningful way to look at individual parts. 
 
-names(copr_boundary_2020)
+copr_boundary_2020
 ```
 
 
@@ -130,6 +130,8 @@ specimen_bounded <- map(copr_boundary_2020, Xcol = 5993354, ycol = 1975712)
 boundary_crs <- st_crs(copr_boundary_2020)
 
 boundary_crs
+
+
 ```
 
 
@@ -316,7 +318,17 @@ specimen_data_less_shp <- st_as_sf(specimen_data_less, coords = c("decimalLongit
                                    crs = boundary_crs)
 
 crs(specimen_data_less_shp)
+
+st_is_longlat(boundary_crs) #Both are FALSE
+
+
+st_is_longlat(copr_boundary_2020)
+
+boundary_crs_longlat <- st_set_crs(copr_boundary_2020, 2229) 
+
+st_is_longlat(boundary_crs_longlat)
 ```
+
 ```{r}
 #Yep same result as last time...The points change too much. 
 ggplot() +
@@ -346,7 +358,44 @@ extent(copr_boundary_2020)
 
   
 
+```{r}
+df_sf <- st_as_sf(specimen_data_less, coords = c("decimalLatitude", "decimalLongitude"),
+                  remove = FALSE, 
+                  crs = boundary_crs)
+df_sf
 
+df_sf_longlat <- st_transform(df_sf, crs ="+proj=lcc +lat_1=35.46666666666667 +lat_2=34.03333333333333 +lat_0=33.5 +lon_0=-118 +x_0=2000000.0001016 +y_0=500000.0001016001 +ellps=GRS80 +datum=NAD83 +to_meter=0.3048006096012192 +no_defs" ) %>% 
+  mutate(long_degrees = st_coordinates(.)[,1],
+         lat_degrees = st_coordinates(.)[,2])
+
+df_sf_longlat
+```
+
+```{r}
+ggplot() +
+  geom_sf(df_sf_longlat, mapping = aes(geometry = geometry)) 
+  #geom_sf(data = copr_boundary_2020, fill = "palegreen", color = "black")
+```
+```{r}
+#Reprojecting extent
+
+extent(specimen_data_less_shp)  
+extent(copr_boundary_2020)
+
+
+e <- raster::extent(-120.4133, -119.4988, 33.977, 34.8624)
+
+e <- as(e, "SpatialPolygons")
+  sp::proj4string(e) <- "+proj=lcc +lat_1=35.46666666666667 +lat_2=34.03333333333333 +lat_0=33.5 +lon_0=-118 +x_0=2000000.0001016 +y_0=500000.0001016001 +ellps=GRS80 +datum=NAD83 +to_meter=0.3048006096012192 +no_defs"
+  
+e.geo <- sp::spTransform(e, CRS("+proj=lcc +lat_1=35.46666666666667 +lat_2=34.03333333333333 +lat_0=33.5 +lon_0=-118 +x_0=2000000.0001016 +y_0=500000.0001016001 +ellps=GRS80 +datum=NAD83 +to_meter=0.3048006096012192 +no_defs"))
+
+par(mfrow=c(1,2))
+  plot(e)
+    title("Original extent")
+  plot(e.geo)  
+    title("Geographic extent")
+```
 
      
 
