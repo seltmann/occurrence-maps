@@ -70,9 +70,6 @@ specimen_data_less <-specimen_data[1:100,c(134,133)]
 head(specimen_data_less)
 
 
-specimen_data_proj <- specimen_data[1:1000, c(137)]
-
-specimen_data_proj
 
 specimen_crs <- specimen_data %>% 
   dplyr::select(decimalLatitude, decimalLongitude, verbatimCoordinateSystem )
@@ -138,15 +135,96 @@ extent(copr_boundary_2020)
 ```{r}
 
 #Plotting shows that the data points do appear in the right location now! We are not getting a display of the map however, lets see if we can troubleshoot this. 
+
+#Edit: It actually appears that the map is on there Just REALLY small, Zooming in on this will help clear this up. 
 ggplot() +
   geom_sf(data = copr_boundary_2020, fill = "palegreen", color = "black") +
-  geom_sf(occur_sf_new, mapping = aes(geometry = geometry)) 
+  geom_sf(occur_sf_new, mapping = aes(geometry = geometry), size = 1) +
+  ggtitle("Occurence of Plant Specimens within Coal Oil Point")
+```
+```{r}
+#Lets crop the map
+
+extent(copr_boundary_2020)
+
+occur_cropped <- st_crop(occur_sf_new, xmin = 5993354, xmax = 5996966,
+                                      ymin = 1975712, ymax = 1979692)
+
+ggplot() +
+  geom_sf(data = copr_boundary_2020, fill = "palegreen", color = "black") +
+  geom_sf(occur_cropped, mapping = aes(geometry = geometry), size = 1) +
+  ggtitle("Occurence of Plant Specimens within Coal Oil Point")
+
+
+#ANNNNND Theres only one data point on it....thats rather anticlimatic....
+  
 ```
 
+```{r}
+#Lets try expanding the dataset to make sure theres more specimen that show up?
+specimen_data_more <-specimen_data[1:1000,c(134,133)]
+
+#First lets change the txt. data into a sf object that uses the standard crs = 4326 for latlong. 
+
+occur_sf_orig_more <- st_as_sf(specimen_data_more, coords = c('decimalLongitude', 'decimalLatitude'), crs = 4326)
+
+#Now lets transform this new sf object to the crs using our boundary data 
+
+occur_sf_new_more <- st_transform(occur_sf_orig_more, 
+                             st_crs(copr_boundary_2020))
+#Check the extents, they appear to be in the same range 
+extent(occur_sf_new_more)
+
+extent(copr_boundary_2020)
 
 
+```
+
+```{r}
+occur_cropped_more <- st_crop(occur_sf_new_more, xmin = 5993354, xmax = 5996966,
+                                      ymin = 1975712, ymax = 1979692)
+
+ggplot() +
+  geom_sf(data = copr_boundary_2020, fill = "palegreen", color = "black") +
+  geom_sf(occur_cropped_more, mapping = aes(geometry = geometry), size = 1) +
+  ggtitle("Occurence of Plant Specimens within Coal Oil Point")
+
+```
+
+```{r}
+#Lets try all of it?
+specimen_data_all <-specimen_data[c(134,133)]
+
+```
+
+```{r}
+
+#First lets change the txt. data into a sf object that uses the standard crs = 4326 for latlong. 
+
+occur_sf_orig_all <- st_as_sf(specimen_data_all, coords = c('decimalLongitude', 'decimalLatitude'), crs = 4326)
+
+#Now lets transform this new sf object to the crs using our boundary data 
+
+occur_sf_new_all <- st_transform(occur_sf_orig_all, 
+                             st_crs(copr_boundary_2020))
+#Check the extents, they appear to be in the same range 
+extent(occur_sf_new_all)
+
+extent(copr_boundary_2020)
 
 
+```
+
+```{r}
+occur_cropped_all <- st_crop(occur_sf_new_all, xmin = 5993354, xmax = 5996966,
+                                                 ymin = 1975712, ymax = 1979692)
+
+ggplot() +
+  geom_sf(data = copr_boundary_2020, fill = "palegreen", color = "black") +
+  geom_sf(occur_cropped_all, mapping = aes(geometry = geometry), size = 1) +
+  ggtitle("Occurence of Plant Specimens within Coal Oil Point")
+
+```
 
 
 
