@@ -120,147 +120,27 @@ ggplot() +
 
 ```
 ```{r}
-###Trim data to Coil Oil Point Reserve 
 
-specimen_bounded <- map(copr_boundary_2020, Xcol = 5993354, ycol = 1975712)
-```
-```{r}
+#First lets change the txt. data into a sf object that uses the standard crs = 4326 for latlong. 
 
+occur_sf_orig <- st_as_sf(specimen_data_less, coords = c('decimalLongitude', 'decimalLatitude'), crs = 4326)
 
-boundary_crs <- st_crs(copr_boundary_2020)
+#Now lets transform this new sf object to the crs using our boundary data 
 
-boundary_crs
+occur_sf_new <- st_transform(occur_sf_orig, 
+                             st_crs(copr_boundary_2020))
+#Check the extents, they appear to be in the same range 
+extent(occur_sf_new)
 
-
-```
-
-
-
-```{r}
-#graph boundary and points
-ggplot(data = copr_boundary_2020) +
-  geom_point(data = specimen_data_less, aes(x = decimalLongitude, y = decimalLatitude), shape = 1)
-
-
-
-```
-
-```{r}
-#Making df to try and plot
-copr_boundary_2020_df <- as.data.frame(copr_boundary_2020, xy=TRUE)
-
-specimen_data_less_df <- as.data.frame(specimen_data_less, xy=TRUE)
-```
-
-```{r}
-#We can create a perimeter of the boundaries using just the extant, however this loses our other perimeter cutoffs, so probably unhelpful in the long run. 
-ggplot() +
-  geom_sf(data = st_as_sfc(st_bbox(copr_boundary_2020)), fill = "green", alpha = 0.2) 
-  #geom_point(data = specimen_data_less, aes(x = decimalLongitude, y = decimalLatitude), shape = 1) 
-```
-```{r}
-#Prehaps trying the function trimdata()? 
-
-#This function seems to only work with already defined maps, so probably not a sol'n 
-
-map(corp_boundary_2020)
-trimdata(data = st_as_sfc(st_bbox(copr_boundary_2020)))
-```
-```{r}
-#Define the extent of the copr_boundary_2020
 extent(copr_boundary_2020)
-e <- extent(5993354, 5996966, 1975712, 1979692)
-class(e)
-
-cropped_data <- crop(x=e, y = specimen_data_less) #Does not work, assuming this is because both need to be Raster objects for the crop function to work on them. 
 ```
 
 ```{r}
-#Trying extract, but pretty sure this needs to be in Raster form
 
-specimen_extract <- extract(x = specimen_data_less, y = copr_boundary_2020, df = TRUE)
-
-```
-
-
-
-```{r}
-#Lets try cropping?
-
-Specimen_data_cropped <- crop(x=specimen_data_less, y =copr_boundary_2020) #Cropping wont work. Needs to be Raster?
-
-
-copr_cropped <- st_crop(copr_boundary_2020, xmin = 5993354, xmax = 5996966, ymin = 1975712, ymax = 1979692 )
-
-ggplot() +
-  geom_sf(data = copr_cropped)
-```
-```{r}
-ggplot() +
-  geom_point(data =specimen_data_less, aes(x = decimalLongitude, y = decimalLatitude), shape = 1, color = "red") +
-  geom_sf(data = copr_cropped) +
-  
-  coord_sf(xlim = c(5993354, 5996966), ylim = c(1975712, 1979692))
- 
-```
-
-
-```{r}
-#combine the two? This does not work!!! Have fun JT!!
+#Plotting shows that the data points do appear in the right location now! We are not getting a display of the map however, lets see if we can troubleshoot this. 
 ggplot() +
   geom_sf(data = copr_boundary_2020, fill = "palegreen", color = "black") +
-  geom_point(data = specimen_data_less_ab, aes(x = decimalLongitude, y = decimalLatitude), shape = 1) +
-  coord_sf(xlim = c(5993354, 5996966), ylim = c(1975712, 1979692))
-
-#Adding restrictions in coord_sf() at least shows us the actual plot once again, however we still arent seeing the points... 
-  
-```
-
-```{r}
-#Longitude is negative so maybe thats messing with it? Just in case lets abs to see what the graph gives us 
-specimen_data_less_ab <- abs(specimen_data_less)
-```
-
-
-
-
-```{r}
-#Same limits as earlier with the addition of the abs data on longitude 
-ggplot() +
-  geom_sf(data = copr_boundary_2020, fill = "palegreen", color = "black") +
-  geom_point(data = specimen_data_less_ab, aes(x = decimalLongitude, y = decimalLatitude), shape = 1) +
-  coord_sf(xlim = c(5993354, 5996966), ylim = c(1975712, 1979692))
-
-#Adding restrictions in coord_sf() at least shows us the actual plot once again, however we still arent seeing the points... 
-  
-```
-
-
-
-```{r}
-#combine the two? This does not work!!! Have fun JT!!
-ggplot() + 
-  geom_sf(
-  data = NULL,
-  stat = "sf",
-  na.rm = FALSE,
-  inherit.aes = TRUE,) + 
-  geom_sf(data = copr_boundary_2020, fill = "palegreen", color = "black") +
-  geom_point(data = specimen_data_less, mapping = aes(x = decimalLongitude, y = decimalLatitude), colour = "red") 
-  
-```
-```{r}
-ggplot() +
-  geom_point(data = specimen_data_less_df, aes(x=decimalLongitude, y = decimalLatitude), shape = 1) +
-  coord_quickmap() + 
- geom_sf(data = copr_boundary_2020_df, aes(geometry = geometry), fill = "palegreen", color = "black")
-```
-
-
-```{r}
-ggplot(copr_boundary_2020, aes(x=x, y=y)) +
-  geom_polygon(fill = "green", colour = "grey50") +
-  coord_quickmap()
+  geom_sf(occur_sf_new, mapping = aes(geometry = geometry)) 
 ```
 
 
@@ -271,133 +151,52 @@ ggplot(copr_boundary_2020, aes(x=x, y=y)) +
 
 
 
-```{r}
-#combine the two? This does not work!!! Have fun JT!!
-
-#So the problem seems to be that we are looking at 2 different types of lat/long coordinates. One is in degrees and the other in full integers. We need to convert one to the other in order for the points to show up on the graph. 
-
-#specimen_data_less_df <- as.data.frame(specimen_data_less, xy = TRUE) #Worth a shot
-ggplot() +
-   geom_sf(data = specimen_data_less_bounded) +
-  geom_sf(data = copr_boundary_2020, fill = "palegreen", color = "black") 
-  
-```
-```{r}
-###Converting to a shp file to see if we can get these points within the same CRS. 
 
 
 
-#make the txt. file into its own shp file > change/set shp file to the vector boundary 
-
-boundary_crs <- crs(copr_boundary_2020)
-
-boundary_crs
-
-class(boundary_crs)
-
-specimen_locations_crs_conversion <- SpatialPointsDataFrame(specimen_data_less[,1:2], specimen_data_less, proj4string = boundary_crs)
-
-crs(specimen_locations_crs_conversion) #CRS now matches 
-
-specimen_locations_crs_conversion_df <- as.data.frame(specimen_locations_crs_conversion)
-
-```
-
-```{r}
-ggplot() +
-  geom_sf(data = specimen_locations_crs_conversion_df, aes(x = decimalLongitude, y = decimalLatitude), shape = 1)
-
-#Missing geometry
-```
-```{r}
-boundary_crs <- crs(copr_boundary_2020)
-
-boundary_crs
-
-specimen_data_less_shp <- st_as_sf(specimen_data_less, coords = c("decimalLongitude", "decimalLatitude"), 
-                                   crs = boundary_crs)
-
-crs(specimen_data_less_shp)
-
-st_is_longlat(boundary_crs) #Both are FALSE
 
 
-st_is_longlat(copr_boundary_2020)
 
-boundary_crs_longlat <- st_set_crs(copr_boundary_2020, 2229) 
 
-st_is_longlat(boundary_crs_longlat)
-```
 
-```{r}
-#Yep same result as last time...The points change too much. 
-ggplot() +
-  geom_sf(specimen_data_less_shp, mapping = aes(geometry = geometry)) 
-  #geom_sf(data = copr_boundary_2020, fill = "palegreen", color = "black") 
 
-extent(specimen_data_less_shp)  #It appears maybe our extents are messing with the plotting?
-extent(copr_boundary_2020)
-  
-```
-```{r}
-#Lets mess with the extent
 
-#convert to latlong nondegrees format?
-specimen_data_less_shp1 <- specimen_data_less_shp
-crs(specimen_data_less_shp1) <- "+proj=lcc +lat_1=35.46666666666667 +lat_2=34.03333333333333 +lat_0=33.5 +lon_0=-118 +x_0=2000000.0001016 +y_0=500000.0001016001 +ellps=GRS80 +datum=NAD83 +to_meter=0.3048006096012192 +no_defs"
 
-x_spec <- projectRaster(specimen_data_less_shp1, crs = '+proj=lcc +lat_1=35.46666666666667 +lat_2=34.03333333333333 +lat_0=33.5 +lon_0=-118 +x_0=2000000.0001016 +y_0=500000.0001016001 +ellps=GRS80 +datum=NAD83 +to_meter=0.3048006096012192 +no_defs')
-```
-```{r}
-#Baseplot method
 
-extent(specimen_data_less_shp)  
-extent(copr_boundary_2020)
 
-```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   
 
-```{r}
-df_sf <- st_as_sf(specimen_data_less, coords = c("decimalLatitude", "decimalLongitude"),
-                  remove = FALSE, 
-                  crs = boundary_crs)
-df_sf
-
-df_sf_longlat <- st_transform(df_sf, crs ="+proj=lcc +lat_1=35.46666666666667 +lat_2=34.03333333333333 +lat_0=33.5 +lon_0=-118 +x_0=2000000.0001016 +y_0=500000.0001016001 +ellps=GRS80 +datum=NAD83 +to_meter=0.3048006096012192 +no_defs" ) %>% 
-  mutate(long_degrees = st_coordinates(.)[,1],
-         lat_degrees = st_coordinates(.)[,2])
-
-df_sf_longlat
-```
-
-```{r}
-ggplot() +
-  geom_sf(df_sf_longlat, mapping = aes(geometry = geometry)) 
-  #geom_sf(data = copr_boundary_2020, fill = "palegreen", color = "black")
-```
-```{r}
-#Reprojecting extent
-
-extent(specimen_data_less_shp)  
-extent(copr_boundary_2020)
 
 
-e <- raster::extent(-120.4133, -119.4988, 33.977, 34.8624)
 
-e <- as(e, "SpatialPolygons")
-  sp::proj4string(e) <- "+proj=lcc +lat_1=35.46666666666667 +lat_2=34.03333333333333 +lat_0=33.5 +lon_0=-118 +x_0=2000000.0001016 +y_0=500000.0001016001 +ellps=GRS80 +datum=NAD83 +to_meter=0.3048006096012192 +no_defs"
-  
-e.geo <- sp::spTransform(e, CRS("+proj=lcc +lat_1=35.46666666666667 +lat_2=34.03333333333333 +lat_0=33.5 +lon_0=-118 +x_0=2000000.0001016 +y_0=500000.0001016001 +ellps=GRS80 +datum=NAD83 +to_meter=0.3048006096012192 +no_defs"))
 
-par(mfrow=c(1,2))
-  plot(e)
-    title("Original extent")
-  plot(e.geo)  
-    title("Geographic extent")
-```
-
-     
 
   
 
