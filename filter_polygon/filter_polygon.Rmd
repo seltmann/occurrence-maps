@@ -73,6 +73,7 @@ head(specimen_data_less)
 
 
 
+
 specimen_crs <- specimen_data %>% 
   dplyr::select(decimalLatitude, decimalLongitude, verbatimCoordinateSystem )
 ```
@@ -283,7 +284,7 @@ new_data_within_polygon_df <- occur_data_within_polygon_df [ which(occur_data_wi
 
 
 ```{r}
-#Using subset feature
+#Using subset feature I found online for trimming data to just whats inside the vector. 
 
 occurence_subset <- occur_sf_new[copr_boundary_2020,] #It worked!!!
 ```
@@ -314,11 +315,59 @@ ggplot() +
 
 
 
+```{r}
+#This is looking if we can associate the order with the data points for some clarity in what we are looking at 
+
+specimen_data_order <- specimen_data[c(134, 133, 194)]
+```
 
 
 
+```{r}
+
+#First lets change the txt. data into a sf object that uses the standard crs = 4326 for latlong. 
+
+occur_sf_order <- st_as_sf(specimen_data_order, coords = c('decimalLongitude', 'decimalLatitude'), crs = 4326)
+
+#Now lets transform this new sf object to the crs using our boundary data 
+
+occur_sf_order_new <- st_transform(occur_sf_order, 
+                             st_crs(copr_boundary_2020))
+#Check the extents, they appear to be in the same range 
+extent(occur_sf_order_new)
+
+extent(copr_boundary_2020)
+```
+```{r}
+#Now lets subset 
+
+occur_sf_order_new_subset <- occur_sf_order_new[copr_boundary_2020,]
+```
+
+```{r}
+sapply(occur_sf_order_new_subset, function(x) length(unique(x)))
+
+occur_sf_order_new_subset$order
+
+order_colors <- c("blue", "red", "green", "orange",  "purple",  "black",  "gray", "aquamarine", "chartreuse", "brown", "cyan", "goldenrod", "deeppink", "maroon", "seagreen1", "tan1", "slategrey", "tomato")
+```
 
 
+  
+```{r}
+#Now lets graph by order.  
+
+ggplot() +
+  geom_sf(data = copr_boundary_2020, fill = "grey", color = "black") +
+  geom_sf(occur_sf_order_new_subset, mapping = aes(geometry = geometry, color = order), size = 1.5) +
+  ggtitle("Distribution of identified organisms within Coal Oil Point") +
+  labs( x = "Longitude", y = "Latitude") +
+  theme_gray() +
+  theme(legend.key.size = unit(0.5, "cm"), 
+        axis.text = element_text(size = 7), 
+        )
+  
+```
 
 
 
