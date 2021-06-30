@@ -29,6 +29,7 @@ library(rgdal)
 library(dplyr)
 library(MapGAM)
 library(tidyr)
+library(plotly)
 ```
 
 
@@ -351,25 +352,37 @@ occur_sf_order_new_subset$order
 
 order_colors <- c("blue", "red", "green", "orange",  "purple",  "black",  "gray", "aquamarine", "chartreuse", "brown", "cyan", "goldenrod", "deeppink", "maroon", "seagreen1", "tan1", "slategrey", "tomato")
 ```
+```{r}
+df_uniq <- unique(occur_sf_order_new_subset$geometry)
+
+length(df_uniq)
+```
 
 
   
 ```{r}
 #Now lets graph by order.  
 
-ggplot() +
-  geom_sf(data = copr_boundary_2020, fill = "grey", color = "black") +
-  geom_sf(occur_sf_order_new_subset, mapping = aes(geometry = geometry, color = order), size = 1.5) +
-  ggtitle("Distribution of identified organisms within Coal Oil Point") +
-  labs( x = "Longitude", y = "Latitude") +
-  theme_gray() +
-  theme(legend.key.size = unit(0.5, "cm"), 
-        axis.text = element_text(size = 7), 
-        )
-  
+Order_Plot <- ggplot() +
+                geom_sf(data = copr_boundary_2020, fill = "grey", color = "black") +
+                geom_sf(occur_sf_order_new_subset, mapping = aes(geometry = geometry, color = order,)) +
+                ggtitle("Distribution of identified organisms within Coal Oil Point") +
+                labs( x = "Longitude", y = "Latitude") +
+                theme_gray() +
+                theme(legend.key.size = unit(0.5, "cm"), 
+                axis.text = element_text(size = 7), 
+                )
+
+Order_Plot
 ```
 
 
+```{r}
+#Making an interactive map, where when you hover over each data point you may see the Taxonomic Order of the observed specimen. 
+ggplotly(Order_Plot)
+
+#Well we can make a hover map, however I think the end goal for this would be I want to show the number of observations at each given data point to show how many times that order was observed in that location. There are 98 unique observations while there is 1603 observations therefore there should be a large number of overlap. 
+```
 
 
 
