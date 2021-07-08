@@ -346,6 +346,74 @@ occur_sf_order_new_subset <- occur_sf_order_new[copr_boundary_2020,]
 ```
 
 ```{r}
+##Export as a csv file
+
+directory <- getwd()
+directory
+
+write.csv(occur_sf_order_new_subset, "C:/Users/JTroo/Desktop/Github/occurence_maps/occurrence-maps/filter_polygon/occur.csv", row.names = TRUE)
+ #So this is the exported dataframe for just taxonomy and geo coordinates. 
+```
+
+
+
+
+
+
+
+```{r}
+
+#Now lets get the whole data set into its own csv
+
+
+#First lets change the txt. data into a sf object that uses the standard crs = 4326 for latlong. 
+
+occur_sf_full <- st_as_sf(specimen_data, coords = c('decimalLongitude', 'decimalLatitude'), crs = 4326)
+
+#Now lets transform this new sf object to the crs using our boundary data 
+
+occur_sf_full_new <- st_transform(occur_sf_full, 
+                             st_crs(copr_boundary_2020))
+#Check the extents, they appear to be in the same range 
+extent(occur_sf_full_new)
+
+extent(copr_boundary_2020)
+```
+
+```{r}
+#Now lets subset 
+
+occur_sf_full_new_subset <- occur_sf_full_new[copr_boundary_2020,]
+```
+
+```{r}
+##Export as a csv file
+
+
+write.csv(occur_sf_full_new_subset, "C:/Users/JTroo/Desktop/Github/occurence_maps/occurrence-maps/filter_polygon/occur_full.csv", row.names = TRUE)
+ #So this is the exported dataframe with all of the original data included.  
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#From here on Im just messing around. 
+```{r}
 sapply(occur_sf_order_new_subset, function(x) length(unique(x)))
 
 occur_sf_order_new_subset$order
