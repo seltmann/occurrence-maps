@@ -74,9 +74,9 @@ head(specimen_data_less)
 
 
 
-
+#This was just running through the data columns to make sure there wasnt an established CRS labeled in the columns
 specimen_crs <- specimen_data %>% 
-  dplyr::select(decimalLatitude, decimalLongitude, verbatimCoordinateSystem )
+  dplyr::select(decimalLatitude, decimalLongitude, eventDate )
 ```
 
 
@@ -121,6 +121,7 @@ ggplot() +
 
 ```
 ```{r}
+#Technically the ESPG:4269 (NAD83) and ESPG:4326 (WGS84) are not equivalent, for most applications they can treated as equivalent. 
 
 #First lets change the txt. data into a sf object that uses the standard crs = 4326 for latlong. 
 
@@ -159,6 +160,7 @@ ggplot() +
   geom_sf(occur_cropped, mapping = aes(geometry = geometry), size = 1) +
   ggtitle("Occurence of Plant Specimens within Coal Oil Point")
 
+#Look at data, plotting on a google map to see 
 
 #ANNNNND Theres only one data point on it....thats rather anticlimatic....
   
@@ -251,35 +253,17 @@ ggplot() +
 ```{r}
 
 #Lets try the st_within function on the 100 sample data set in order to see if there should only be one true output
-occur_data_within_polygon_small <- st_within(occur_sf_new_named, copr_boundary_2020, sparse = FALSE) 
+occur_data_within_polygon_small <- st_within(occur_sf_new, copr_boundary_2020, sparse = FALSE) 
 
 occur_data_within_polygon_small #Success! there is only one TRUE 
 
-occur_data_within_polygon_small_df <- as.data.frame(occur_data_within_polygon_small, xy = TRUE)
 
-occur_sf_new_polygon <- merge(occur_sf_new_named, occur_data_within_polygon_small_df)
-# Maybe try using tibble 
-
-occur_sf_new_polygon <- occur_sf_new_named %>% 
-  add_column(occur_data_within_polygon_small_df)
 #So we can get the return of false and TRUE values for what is actually inside the polygon. Now we just need to find a way to associate the TRUE/FALSE outputs with their parent values and then subset a dataset with only TRUE outputs. 
 
 
 ```
 
-```{r}
 
-#Using st_within the polygon to find the values that mark true for being within the polygon. 
-occur_data_within_polygon <- st_within(occur_cropped_all, copr_boundary_2020, sparse = FALSE) 
-
-occur_data_within_polygon
-
-occur_data_within_polygon_df <- as.data.frame(occur_data_within_polygon, xy = TRUE)
-
-new_data_within_polygon_df <- occur_data_within_polygon_df [ which(occur_data_within_polygon_df$V1 == "TRUE")]
-
-
-```
 
 
 
@@ -368,6 +352,8 @@ write.csv(occur_sf_order_new_subset, "C:/Users/JTroo/Desktop/Github/occurence_ma
 
 #First lets change the txt. data into a sf object that uses the standard crs = 4326 for latlong. 
 
+#Note: The crs 4326 is referring to the ESPG code WGS84 which is the standard world wide latlong GIS data format that is used for global spatial data. A common user of WGS84 is Google Earth. The specific CRS of the boundary data, NAD83 is considered old fashioned since it is specifically referring to a specified location. 
+
 occur_sf_full <- st_as_sf(specimen_data, coords = c('decimalLongitude', 'decimalLatitude'), crs = 4326)
 
 #Now lets transform this new sf object to the crs using our boundary data 
@@ -448,6 +434,8 @@ Order_Plot
 ```{r}
 #Making an interactive map, where when you hover over each data point you may see the Taxonomic Order of the observed specimen. 
 ggplotly(Order_Plot)
+
+#Heat Map figure out how to make one.
 
 #Well we can make a hover map, however I think the end goal for this would be I want to show the number of observations at each given data point to show how many times that order was observed in that location. There are 98 unique observations while there is 1603 observations therefore there should be a large number of overlap. 
 ```
