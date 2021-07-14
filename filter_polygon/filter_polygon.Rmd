@@ -76,7 +76,7 @@ head(specimen_data_less)
 
 #This was just running through the data columns to make sure there wasnt an established CRS labeled in the columns
 specimen_crs <- specimen_data %>% 
-  dplyr::select(decimalLatitude, decimalLongitude, eventDate )
+  dplyr::select(decimalLatitude, decimalLongitude, coordinateUncertaintyInMeters )
 ```
 
 
@@ -440,11 +440,109 @@ ggplotly(Order_Plot)
 #Well we can make a hover map, however I think the end goal for this would be I want to show the number of observations at each given data point to show how many times that order was observed in that location. There are 98 unique observations while there is 1603 observations therefore there should be a large number of overlap. 
 ```
 
+```{r}
+#Lets try creating a column that assigns values for each observation
+
+occur_count_unique <- occur_sf_order_new_subset %>% group_by(order) %>% mutate(Count = n_distinct(geometry))
+```
 
 
 
 
 
+```{r}
+occur_count_unique
+
+fig <- ggplotly(
+  ggplot(data = copr_boundary_2020, fill = "grey", color = "black")) +
+    geom_sf(occur_count_unique, mapping = aes(geometry = geometry))
+)
+
+fig
+```
+
+```{r}
+#Now lets graph by order.  
+
+Order_Plot2 <- ggplot() +
+                geom_sf(data = copr_boundary_2020, fill = "grey", color = "black") + 
+  
+                geom_sf(occur_count_unique, mapping = aes(geometry = geometry, color = order,)) +
+ geom_bin2d() +
+                ggtitle("Distribution of identified organisms within Coal Oil Point") +
+                labs( x = "Longitude", y = "Latitude", fill = "# of Observations") +
+                theme_gray() +
+                theme(legend.key.size = unit(0.5, "cm"), 
+                axis.text = element_text(size = 7), 
+                )
+
+Order_Plot2
+
+ggplotly(Order_Plot2)
+```
+
+
+```{r}
+#Seems we need to seperate out the geometry column into new columns 
+
+
+occurence_order_subset_sep <- occur_sf_order_new_subset %>%
+  dplyr::mutate(lat = sf::st_coordinates(.)[,1],
+                lon = sf::st_coordinates(.)[,2])
+occurence_all_subset_sep
+```
+
+
+```{r}
+#Make a second df of unique counts for each order using this newly adjusted separation df
+
+#occurence_order_subset_sep_unique <- occurence_order_subset_sep %>% group_by(order) %>% mutate(Count = n_distinct(geometry))
+
+#Alright, now we have an x and y column to input into plotly as well as count column. EDIT RETURNS WRONG INFO
+
+```
+
+```{r}
+#This is the correct way to sum up counts of the observations per coordinate point
+occurence_order_subset_sep_unique <- occurence_order_subset_sep %>% 
+  dplyr::group_by(lat, lon) %>% 
+  dplyr::mutate(count = n())
+```
+
+
+
+```{r}
+#Now lets graph by order.  
+
+Order_Plot2 <- ggplot() +
+                geom_sf(data = copr_boundary_2020, fill = "grey", color = "black") +
+                geom_sf(occurence_order_subset_sep_unique, mapping = aes(geometry = geometry, color = order,)) +
+  geom_bin2d(occurence_order_subset_sep_unique, mapping = aes(x = lat, y = lon)) +
+  facet_wrap(~order)
+                
+
+Order_Plot2
+```
+```{r}
+ggplotly(Order_Plot2)
+```
+
+  
+```{r}
+#Now lets graph by order.  
+
+Order_Plot4 <- ggplot() +
+                geom_sf(data = copr_boundary_2020, fill = "grey", color = "black") +
+                geom_sf(occurence_order_subset_sep_unique, mapping = aes(geometry = geometry,color = order, count = count)) +
+                ggtitle("Distribution of identified organisms within Coal Oil Point") +
+                labs( x = "Longitude", y = "Latitude") +
+                theme_gray() +
+                theme(legend.key.size = unit(0.5, "cm"), 
+                axis.text = element_text(size = 7), 
+                )
+
+ggplotly(Order_Plot4, tooltip = c("order", "count"))
+```
 
 
 
