@@ -30,6 +30,8 @@ library(dplyr)
 library(MapGAM)
 library(tidyr)
 library(plotly)
+library(ggmap)
+
 ```
 
 
@@ -487,8 +489,8 @@ ggplotly(Order_Plot2)
 
 
 occurence_order_subset_sep <- occur_sf_order_new_subset %>%
-  dplyr::mutate(lat = sf::st_coordinates(.)[,1],
-                lon = sf::st_coordinates(.)[,2])
+  dplyr::mutate(lat = sf::st_coordinates(.)[,2],
+                lon = sf::st_coordinates(.)[,1])
 occurence_all_subset_sep
 ```
 
@@ -518,6 +520,8 @@ Order_Plot2 <- ggplot() +
                 geom_sf(data = copr_boundary_2020, fill = "grey", color = "black") +
                 geom_sf(occurence_order_subset_sep_unique, mapping = aes(geometry = geometry, color = order,)) +
   geom_bin2d(occurence_order_subset_sep_unique, mapping = aes(x = lat, y = lon)) +
+  geom_hex(binwidth = c(5, 5), alpha = .4) + 
+  geom_point(size = 2, alpha = 0.8)
   facet_wrap(~order)
                 
 
@@ -543,19 +547,213 @@ Order_Plot4 <- ggplot() +
 
 ggplotly(Order_Plot4, tooltip = c("order", "count"))
 ```
+```{r}
+data <- as.matrix(occurence_order_subset_sep_unique)
+
+data_df <- as.data.frame(data)
+```
 
 
+```{r}
+ggplot(occurence_order_subset_sep_unique, aes(x = lon, y = lat)) + 
+  coord_equal() + 
+  xlab('Longitude') + 
+  ylab('Latitude') + 
+  stat_density2d(aes(fill = count), alpha = .5,
+                 geom = "polygon", data = occurence_order_subset_sep_unique) + 
+  scale_fill_viridis_c() + 
+  theme(legend.position = 'none')
+ 
+```
 
 
+```{r}
+data_hymenpotera <-occurence_order_subset_sep_unique %>% 
+  dplyr::filter(order == "Hymenoptera")
+
+data_decapoda <- occurence_order_subset_sep_unique %>% 
+  dplyr::filter(order == "Decapoda")
+```
 
 
-
-
-
-
-
-
+```{r}
+hymenpotera <- ggplot() +
+                geom_sf(data = copr_boundary_2020, fill = "grey", color = "black") +
+                geom_sf(data_hymenpotera, mapping = aes(geometry = geometry, color = order,)) +
+  geom_bin2d(data_hymenpotera, mapping = aes(x = lat, y = lon)) 
   
+hymenpotera 
+```
+
+```{r}
+#Lets try some basics 
+hymenpotera2 <- ggplot(data_hymenpotera, aes(x=lon, y = lat)) +
+  geom_bin2d(bins = 70) +
+  scale_fill_continuous(type = "viridis") +
+  theme_bw()
+
+hymenpotera2
+```
+
+```{r}
+#Contour?
+
+ggplot(data_hymenpotera, aes(x=lon, y=lat) ) +
+  geom_density_2d()
+```
+```{r}
+ggplot(data_hymenpotera, aes(x=lon, y=lat) ) +
+  stat_density_2d(aes(fill = ..level..), geom = "polygon")
+```
+```{r}
+ggplot(data_hymenpotera, aes(x=lon, y=lat) ) +
+  stat_density_2d(aes(fill = ..level..), geom = "polygon", colour="white") 
+  
+```
+```{r}
+copr_df <- fortify(copr_boundary_2020)
+
+ggplot(data_hymenpotera, aes(x = "lon", y = "lat")) +
+  geom_path(data = copr_df, 
+            aes(geometry = geometry)) +
+  stat_density2d(geom = "polygon", aes(fill = ..level..), contour = TRUE)
+```
+
+```{r}
+#Now lets graph by hym 
+
+hym_Plot <- ggplot() +
+                geom_sf(data = copr_boundary_2020, fill = "grey", color = "black") +
+                geom_sf(data_hymenpotera, mapping = aes(geometry = geometry, color = order,)) +
+                ggtitle("Distribution of identified organisms within Coal Oil Point") +
+                labs( x = "Longitude", y = "Latitude") +
+                theme_gray() +
+                theme(legend.key.size = unit(0.5, "cm"), 
+                axis.text = element_text(size = 7), 
+                )
+
+hym_Plot +geom_density_2d_filled(alpha = 0.5)
+
+ggplot(data_hymenpotera, aes( lon, lat)) +
+  stat_density_2d(geom = "polygon", aes(alpha = ..level..)) +
+   geom_sf(data = copr_boundary_2020, fill = NA)
+
+ggplot() + 
+  geom_sf(data = copr_boundary_2020) +
+  stat_density_2d(data = data_hymenpotera, aes( x = lon, y = lat))
+
+ggplot() +
+  geom_sf(data = copr_boundary_2020, ) + 
+  stat_density_2d(data = data_hymenpotera, geom = "polygon" , aes(x = lon, y = lat, alpha = ..level.., fill = count), colour = "red")
+
+```
+```{r}
+ggplot() +
+  geom_sf(data = copr_boundary_2020) + 
+  stat_density_2d(data = occurence_order_subset_sep_unique, geom = "polygon" , aes(x = lon, y = lat, alpha = ..level.., fill = count), colour = "red")
+```
+```{r}
+ggplot() +
+  geom_sf(data = copr_boundary_2020) + 
+  stat_density_2d(data = data_decapoda , aes(x = lon, y = lat), colour = "red")
+```
+```{r}
+m <- ggplot(data_hymenpotera, aes(x = lon, y =lat)) +
+  geom_sf() 
+
+m + geom_density_2d()
+  
+```
+
+```{r}
+#Seems we need to seperate out the geometry column into new columns 
+
+
+copr_boundary_sep <- copr_boundary_2020 %>%
+  dplyr::mutate(x_coord = sf::st_coordinates(.)[,2],
+                y_coord = sf::st_coordinates(.)[,1])
+copr_boundary_sep
+```
+```{r}
+ggplot() +
+   stat_density_2d(data = occurence_order_subset_sep_unique, aes( x = lon, y =lat)) +
+   geom_sf(copr_boundary_2020, fill = "grey") 
+ 
+```
+
+```{r}
+
+ggplot() +
+  geom_sf(data = copr_boundary_2020, fill = "grey", color = "black") +
+  geom_density2d(data = data_hymenpotera, aes(x = lon, y = lat)) +
+                 stat_density2d(data = data_hymenpotera, aes(x = lon, y = lat, fill = ..level..))
+
+```
+
+
+```{r}
+#Hexagonal
+
+ggplot(data = data_hymenpotera, aes(x = lon, y = lat)) + 
+  geom_hex()
+```
+
+```{r}
+ggplot() + 
+  geom_polygon(data = copr_boundary_2020)
+```
+```{r}
+#Lets see if we can combine the two shp objects?
+hym_sf_merged <- merge(copr_boundary_2020, data_hymenpotera, by.x = "GEOID10", by.y = "GEOID")
+names(hym_sf_merged)
+```
+  
+```{r}
+#Lets try some basics again
+
+ggplot() +
+  geom_sf(data = copr_boundary_2020, fill = "grey", color = "grey") +
+  stat_density_2d(data = data_hymenpotera, aes(lon, lat))
+```
+```{r}
+extent(data_hymenpotera)
+
+extent(copr_boundary_2020)
+```
+```{r}
+
+#This is a method for kernel density, however I am unable to add the copr_boundary_2020 shp file to it... Also the density doesnt make sense considering it shows higher densities in wrong locations according to the count data. 
+
+ggplot(data = data_hymenpotera) +
+  geom_sf() +
+  theme_bw() +
+  stat_density_2d(mapping = ggplot2::aes(x = purrr::map_dbl(geometry, ~.[1]),
+                                         y = purrr::map_dbl(geometry, ~.[2]),
+                                         fill = stat(density)),
+                  geom = 'tile',
+                  contour = FALSE, 
+                  alpha = 0.5) +
+  geom_sf(data = copr_boundary_2020, fill = NA)
+
+#Source: https://stackoverflow.com/questions/51566685/plotting-a-kernel-map-based-on-points-with-geom-sf 
+
+```
+
+
+```{r}
+#Hexagonal mapping of the counts, cant include the polygon for some reason. #Lets not use this method. 
+ggplot(data_hymenpotera, aes(x = lon, y = lat)) +
+  geom_hex(bins = 20, size = 0.5, color = "black") +
+  scale_fill_viridis_c(option = "C") 
+  
+```
+```{r}
+ggplot() +
+  geom_sf(copr_boundary_2020, fill = "grey") +
+
+    geom_density2d(data = data_hymenpotera, aes(colour=..count..))
+
+```
 
 
 
