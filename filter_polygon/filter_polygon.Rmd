@@ -646,7 +646,50 @@ ggplot() +
   geom_sf(data = copr_boundary_2020, ) + 
   stat_density_2d(data = data_hymenpotera, geom = "polygon" , aes(x = lon, y = lat, alpha = ..level.., fill = count), colour = "red")
 
+
+
 ```
+
+```{r}
+ggplot() +
+  geom_sf(data = copr_boundary_2020) +
+  geom_bin2d(data = data_hymenpotera_distict, aes(x = lon, y = lat))
+```
+
+
+
+```{r}
+#Filtering out non unique observations.
+data_hymenpotera_distinct <- data_hymenpotera %>% distinct(geometry, .keep_all = TRUE)
+```
+
+
+```{r}
+ggplot() +
+  geom_sf(data = copr_boundary_2020, ) + 
+  stat_density_2d(data = data_hymenpotera_distinct, geom = "polygon" , aes(x = lon, y = lat, alpha = ..level.., fill = count), colour = "red")
+
+```
+```{r}
+
+extent(copr_boundary_2020)
+ggplot(data_hymenpotera, aes(x = lon, y = lat)) +
+  geom_point() +
+  coord_equal() + 
+  xlab('Longitude') + 
+  ylab('Latitude') + 
+  stat_density2d(aes(fill = ..level..), alpha = .5,
+                 geom = "polygon", data = data_hymenpotera) + 
+  scale_fill_viridis_c() + 
+  theme(legend.position = 'none') +
+  coord_cartesian(xlim = c(5993354, 5996966), ylim = c(1975712, 1979692))
+```
+
+
+
+
+
+
 ```{r}
 ggplot() +
   geom_sf(data = copr_boundary_2020) + 
