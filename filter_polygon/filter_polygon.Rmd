@@ -115,6 +115,7 @@ copr_boundary_2020
 
 
 
+
 ```{r}
 #draw boundary from shp file
 ggplot() +
@@ -444,8 +445,9 @@ ggplotly(Order_Plot)
 
 ```{r}
 #Lets try creating a column that assigns values for each observation
+#This is wrong do not use
 
-occur_count_unique <- occur_sf_order_new_subset %>% group_by(order) %>% mutate(Count = n_distinct(geometry))
+#occur_count_unique <- occur_sf_order_new_subset %>% group_by(order) %>% mutate(Count = n_distinct(geometry))
 ```
 
 
@@ -684,6 +686,11 @@ ggplot(data_hymenpotera, aes(x = lon, y = lat)) +
   theme(legend.position = 'none') +
   coord_cartesian(xlim = c(5993354, 5996966), ylim = c(1975712, 1979692))
 ```
+```{r}
+copr_boundary_df <- fortify(copr_boundary_2020)
+
+copr_boundary_df
+```
 
 
 
@@ -802,10 +809,72 @@ ggplot() +
 
 
 
+## This section looks at transforming the shp file rather then the occurence data to see if we can get different results/map easier. 
+
+
+
+```{r}
+#This is just testing what it looks like to transform the NAD83 shp file to WGS84
+copr_shp <- st_read("COPR_Boundary_2010/COPR_boundary2010.shp")
+
+copr_shp_transformed <- st_transform(copr_shp, "+proj=longlat +ellps=WGS84 +datum=WGS84")
+
+head(copr_shp_transformed)
+```
+
+
+
+
+```{r}
+#Just to check, you do get the same type of output if you transform the boundary data rather then the other.
+occurence_all_subset_new_bound <- occur_sf_orig_all[copr_shp_transformed,]
+
+ggplot() +
+  geom_sf(data = copr_shp_transformed, fill = "palegreen", color = "black") +
+  geom_sf(occurence_all_subset_new_bound, mapping = aes(geometry = geometry), size = 1) +
+  ggtitle("Occurence of Plant Specimens within Coal Oil Point")
+```
+
+
+```{r}
+ggplot() +
+  geom_sf(data = copr_boundary_2020, fill = "palegreen", color = "black") +
+  geom_sf(occurence_all_subset, mapping = aes(geometry = geometry), size = 1) +
+  ggtitle("Occurence of Plant Specimens within Coal Oil Point")
+```
+
 
   
 
 
+
+```{r}
+specimen_data_order #This is the filtered data for coordinates with order attached. 
+
+specimen_data_order_unique <- specimen_data_order %>%  
+  dplyr::group_by(decimalLatitude, decimalLongitude) %>% 
+  dplyr::mutate(count = n())#This line is that one that creates a number of observations associated with each data point to tell us how many are in this location.
+
+
+data_hymenpotera_orig_crs <-specimen_data_order_unique %>% 
+  dplyr::filter(order == "Hymenoptera")
+```
+
+```{r}
+
+
+extent(copr_shp_transformed)
+ggplot(data_hymenpotera_orig_crs, aes(x = decimalLongitude, y = decimalLatitude)) +
+  geom_point() +
+  coord_equal() + 
+  xlab('Longitude') + 
+  ylab('Latitude') + 
+  stat_density2d(aes(fill = ..level..), alpha = .5,
+                 geom = "polygon", data = data_hymenpotera_orig_crs) + 
+  scale_fill_viridis_c() + 
+  theme(legend.position = 'none') 
+  #coord_cartesian(xlim = c(-119.8844, -119.8725), ylim = c(34.40679, 34.41768))
+```
 
 
   
