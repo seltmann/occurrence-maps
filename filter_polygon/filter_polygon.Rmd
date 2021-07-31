@@ -906,6 +906,22 @@ tm_shape(copr_boundary_2020) +
   tm_compass(position = c("left", "top")) +
   tm_layout(main.title = "Coal Oil Point Reserve")
 ```
+```{r}
+tmap_mode("plot") 
+
+tm1 <- tm_shape(data_hymenpotera) + tm_bubbles(size = "count")
+
+tmap_arrange(tm1)
+```
+```{r}
+tmap_mode("view")
+tm_shape(copr_boundary_2020) +
+  tm_borders() +
+  tm_shape(data_hymenpotera) + tm_bubbles(size = "count", col = "red") +
+  
+  
+  tm_layout(main.title = "Coal Oil Point Reserve Hymenpotera Observations")
+```
 
   
 
