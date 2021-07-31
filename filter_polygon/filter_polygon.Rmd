@@ -21,16 +21,16 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 #required libraries
 library(ggplot2)
-library(maptools)
+#library(maptools)
 library(sf)
-library(maps)
+#library(maps)
 library(raster)
 library(rgdal)
 library(dplyr)
-library(MapGAM)
+#library(MapGAM)
 library(tidyr)
 library(plotly)
-library(ggmap)
+#library(ggmap)
 
 ```
 
@@ -876,6 +876,36 @@ ggplot(data_hymenpotera_orig_crs, aes(x = decimalLongitude, y = decimalLatitude)
   #coord_cartesian(xlim = c(-119.8844, -119.8725), ylim = c(34.40679, 34.41768))
 ```
 
+## Chloropleth with tmap
+```{r}
+#https://r-spatialecology.github.io/ialena-2020/#14 and https://cengel.github.io/R-spatial/mapping.html  is used as references 
+library(tmap)
+tm_shape(copr_boundary_2020) +
+  tm_borders() +
+  tm_compass(position = c("left", "top")) +
+  tm_layout(main.title = "Coal Oil Point Reserve")
+```
+```{r}
+tmap_mode("view") +
+  tm_shape(copr_boundary_2020) +
+  tm_borders() +
+  tm_layout(main.title = "Coal Oil Point Reserve")
+```
+```{r}
+tmap_mode("plot")
+tm_shape(copr_boundary_2020) +
+tm_borders() +
+  tm_layout(main.title = "Coal Oil Point Reserve")
+```
+```{r}
+tmap_mode("view")
+tm_shape(copr_boundary_2020) +
+  tm_borders() +
+  tm_shape(data_hymenpotera) +
+  tm_symbols(col = "red",  scale = .5) +
+  tm_compass(position = c("left", "top")) +
+  tm_layout(main.title = "Coal Oil Point Reserve")
+```
 
   
 
