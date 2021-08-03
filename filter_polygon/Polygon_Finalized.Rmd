@@ -24,6 +24,7 @@ library(rgdal)
 library(dplyr)
 library(tidyr)
 library(plotly)
+library(tmap)
 ```
 
 ## Bringing in the data & cleaning
@@ -159,6 +160,59 @@ data_hymenpotera <-occurence_order_subset_sep_unique %>%
   dplyr::filter(order == "Hymenoptera")
 ```
 
+```{r}
+#Lets organize all of them into seperate data sets while we're at it. 
+data_amphipoda <- occurence_order_subset_sep_unique %>% 
+  dplyr::filter(order == "Amphipoda")
+
+data_araneae <- occurence_order_subset_sep_unique %>% 
+  dplyr::filter(order == "Araneae")
+
+data_archaeognatha <- occurence_order_subset_sep_unique %>% 
+  dplyr::filter(order == "Archaeognatha")
+
+data_coleoptera <- occurence_order_subset_sep_unique %>% 
+  dplyr::filter(order == "Coleoptera")
+
+data_decapoda <- occurence_order_subset_sep_unique %>% 
+  dplyr::filter(order == "Decapoda")
+
+data_dermaptera <- occurence_order_subset_sep_unique %>% 
+  dplyr::filter(order == "Dermaptera")
+
+data_diptera <- occurence_order_subset_sep_unique %>% 
+  dplyr::filter(order == "Diptera")
+
+data_ephemeroptera <- occurence_order_subset_sep_unique %>% 
+  dplyr::filter(order == "Ephemeroptera")
+
+data_hemiptera <- occurence_order_subset_sep_unique %>% 
+  dplyr::filter(order == "Hemiptera")
+
+data_isopoda <- occurence_order_subset_sep_unique %>% 
+  dplyr::filter(order == "Isopoda")
+
+data_lepidoptera <- occurence_order_subset_sep_unique %>% 
+  dplyr::filter(order == "Lepidoptera")
+
+data_odonata <- occurence_order_subset_sep_unique %>% 
+  dplyr::filter(order == "Odonata")
+
+data_orthoptera <- occurence_order_subset_sep_unique %>% 
+  dplyr::filter(order == "Orthoptera")
+
+data_pedunculata <- occurence_order_subset_sep_unique %>% 
+  dplyr::filter(order == "Pedunculata")
+
+data_psocodea <- occurence_order_subset_sep_unique %>% 
+  dplyr::filter(order == "Psocodea")
+
+data_sessilia <- occurence_order_subset_sep_unique %>% 
+  dplyr::filter(order == "Sessilia")
+
+
+```
+
 
 ```{r}
 ggplot() +
@@ -167,6 +221,41 @@ ggplot() +
                  stat_density2d(data = data_hymenpotera, aes(x = lon, y = lat, fill = ..level..))
 
 #Well this is kinda of what we're looking for, however the results are quite what we'd expect considering that there should be a high density region at the lower area of the map where there should be a count of 283. 
+```
+## Using the package tmaps, lets visualize the data a bit differently. 
+
+```{r}
+#https://r-spatialecology.github.io/ialena-2020/#14 and https://cengel.github.io/R-spatial/mapping.html  is used as references 
+
+tm_shape(copr_boundary_2020) +
+  tm_borders() +
+  tm_compass(position = c("left", "top")) +
+  tm_layout(main.title = "Coal Oil Point Reserve")
+#Basic map
+```
+
+```{r}
+tmap_mode("view")
+tm_shape(copr_boundary_2020) +
+  tm_borders() +
+   tm_graticules() +
+  tm_shape(data_hymenpotera) + tm_bubbles(size = "count", col = "red") +
+   tm_compass(position = c("left", "top")) +
+ 
+  
+  tm_layout(main.title = "Coal Oil Point Reserve Hymenpotera Observations")
+```
+
+```{r}
+tmap_mode("view")
+tm_shape(copr_boundary_2020) +
+  tm_borders() +
+   tm_graticules() +
+  tm_shape(data_isopoda) + tm_bubbles(size = "count", col = "red") +
+   tm_compass(position = c("left", "top")) +
+ 
+  
+  tm_layout(main.title = "Coal Oil Point Reserve Hymenpotera Observations")
 ```
 
 
