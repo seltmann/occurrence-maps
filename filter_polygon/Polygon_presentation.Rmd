@@ -1,0 +1,29 @@
+---
+title: "Polygon_presentation"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# started by Katja Seltmann, 2020
+# Script to map occurrence records of species (lat/long) that occur only within the boundaries of Coal Oil Point Reserve (shp file)
+# COPR occurrence records in tab-delimited format: https://ucsb.box.com/s/7xp88xhg1xn7decsv0t3ll8du653deub
+# COPR boundary files: https://ucsb.box.com/s/nd1s0e3ted8zsu0ir4wbxu7qpe94ht8o
+
+#The goal of this script is to:
+#draw boundary of copr on map
+#Trim specimen_data (occurrence.txt) based on copr boundary creating new file that only contains specimens whose coordinates are within that boundary
+
+```{r}
+#required libraries
+library(ggplot2) #library for visualization and plotting.
+library(sf) #Spatial objects package, very useful for vector data types
+library(raster) #Spatial object package for raster type data
+library(rgdal) #Spatial objects
+library(dplyr) #Cleaning and data wrangling 
+library(tidyr) #Very large package for data organization
+library(plotly) #Makes ggplots interactive 
+library(tmap) #Another interactive map package
+```
