@@ -27,3 +27,205 @@ library(tidyr) #Very large package for data organization
 library(plotly) #Makes ggplots interactive 
 library(tmap) #Another interactive map package
 ```
+
+## Bringing in the data & cleaning
+```{r}
+#file that contains over 75K of specimen data with lat/long coordinates
+specimen_data <- read.delim(file="occurrence.txt",header=TRUE)
+```
+
+```{r}
+#remove rows where order, lat/long do not exist
+specimen_data <- subset(specimen_data, !is.na(order) & !is.na(decimalLongitude) & !is.na(decimalLatitude))
+```
+
+```{r}
+#read boundary from shp file
+copr_boundary_2020 <- st_read("COPR_Boundary_2010/COPR_boundary2010.shp") #Vector type. 
+
+copr_boundary_2020
+#What is the projection of copr_boundary_2020
+
+#Global datum is NAD83. California zone 5 is code: ESPG:2229.
+
+#A great site for looking up crs info: https://spatialreference.org/ 
+```
+
+## What is the CRS of our occurence data?
+```{r}
+crs(copr_boundary_2020)
+crs(specimen_data) #NA so it hasnt been assigned a crs.
+
+```
+```{r}
+#Another method for storing crs's is to place them in a data column. Lets look at the names of the data columns. 
+names(specimen_data)
+
+#There are some here that look like they could be right, however if you filter them out you will find that they do not yield a crs. 
+
+#While looking at these some important column names are 134 and 133 which contain decimal latitude and decimal longitude, as well as column 194 that contains taxonomic Order of the specimen found.  
+```
+## Lets filter out the data so that we have only those 3 columns of interest (lat, long, and order)
+```{r}
+specimen_data_order <- specimen_data[c(134, 133, 194)]
+```
+
+##Lets plot the boundary vector data just to take a look at it
+```{r}
+#draw boundary from shp file
+ggplot() +
+  geom_sf(data = copr_boundary_2020, fill = "palegreen", color = "black")
+```
+## Will these two data sets we have plot together?
+```{r}
+ggplot() +
+  geom_sf(data = copr_boundary_2020, fill = "palegreen", color = "black") +
+  geom_point(data = specimen_data_order, aes(x = decimalLongitude, y = decimalLatitude), shape = 1)
+
+#No they will not plot together since they have different CRSs 
+
+```
+##Lets try assigning a CRS to our occurence data and then transform it into the boundary files CRS. 
+```{r}
+#Technically the ESPG:4269 (NAD83) and ESPG:4326 (WGS84) are not equivalent, for most applications they can treated as equivalent. 
+
+#First lets change the txt. data into a sf object that uses the standard crs = 4326 for latlong. 
+
+occur_sf_order <- st_as_sf(specimen_data_order, coords = c('decimalLongitude', 'decimalLatitude'), crs = 4326)
+
+extent(occur_sf_order)
+extent(copr_boundary_2020)
+#Now lets transform this new sf object to the crs using our boundary data 
+
+occur_sf_order_new <- st_transform(occur_sf_order, 
+                             st_crs(copr_boundary_2020))
+#Check the extents, they appear to be in the same range 
+extent(occur_sf_order_new)
+
+extent(copr_boundary_2020)
+```
+## Now lets graph 
+```{r}
+ggplot() +
+  geom_sf(data = copr_boundary_2020, fill = "palegreen", color = "black") +
+  geom_sf(occur_sf_order_new, mapping = aes(geometry = geometry), size = 1) +
+  ggtitle("Occurence of Plant Specimens at Coal Oil Point")
+#Okay, it seems that the data is including lots of points that are outside the specified range of the boundary shape
+```
+## Lets subset the data to only include whats inside our vector shp file. 
+```{r}
+occur_sf_order_new_subset <- occur_sf_order_new[copr_boundary_2020,]
+```
+
+## And graph again
+```{r}
+ggplot() +
+  geom_sf(data = copr_boundary_2020, fill = "palegreen", color = "black") +
+  geom_sf(occur_sf_order_new_subset, mapping = aes(geometry = geometry), size = 1) +
+  ggtitle("Occurence of Plant Specimens within Coal Oil Point")
+
+#And thats what we want! 
+```
+
+## If we wanted to now take this newly subsetted data of whats inside the preserve and make a .csv file out of it 
+```{r}
+##Export as a csv file
+
+directory <- getwd()
+directory
+
+write.csv(occur_sf_order_new_subset, "C:/Users/JTroo/Desktop/Github/occurence_maps/occurrence-maps/filter_polygon/occur.csv", row.names = TRUE)
+ #So this is the exported dataframe for just taxonomy and geo coordinates. 
+
+```
+# If we want to visualize our data in other unique ways 
+
+## Lets try making a nicer graph that shows taxonomic order in relation to the data points
+```{r}
+#Now lets graph by order.  
+
+Order_Plot <- ggplot() +
+                geom_sf(data = copr_boundary_2020, fill = "grey", color = "black") +
+                geom_sf(occur_sf_order_new_subset, mapping = aes(geometry = geometry, color = order,)) +
+                ggtitle("Distribution of identified organisms within Coal Oil Point") +
+                labs( x = "Longitude", y = "Latitude") +
+                theme_gray() +
+                theme(legend.key.size = unit(0.5, "cm"), 
+                axis.text = element_text(size = 7), 
+                )
+
+Order_Plot #While this is more informative, its rather hard to read
+```
+## Lets try making an interactive plotly map so its easier to interpret
+```{r}
+#Making an interactive map, where when you hover over each data point you may see the Taxonomic Order of the observed specimen. 
+ggplotly(Order_Plot) #This is alot better, however notice that theres 1603 observations...but not that many points on the graph. 
+
+
+```
+## Lets figure out a way to make it where we can get counts for each unique order with the same gps coordinate location so that we can see how many reaccurances appear in a location. 
+```{r}
+#Seems we need to seperate out the geometry column into new columns 
+
+occurence_order_subset_sep <- occur_sf_order_new_subset %>%
+  dplyr::mutate(lat = sf::st_coordinates(.)[,2],
+                lon = sf::st_coordinates(.)[,1])
+occurence_order_subset_sep
+```
+
+```{r}
+#This is the correct way to sum up counts of the observations per coordinate point
+occurence_order_subset_sep_unique <- occurence_order_subset_sep %>% 
+  dplyr::group_by(lat, lon) %>% #Designate unique lat lon
+  dplyr::mutate(count = n()) #Create a new column with the counts 
+```
+
+## Lets graph with both ggplot and ggplotly to see if the counts appear next to the data points. 
+```{r}
+#Now lets graph by order.  
+
+Order_Plot_counts <- ggplot() +
+                geom_sf(data = copr_boundary_2020, fill = "grey", color = "black") +
+                geom_sf(occurence_order_subset_sep_unique, mapping = aes(geometry = geometry,color = order, count = count)) +
+                ggtitle("Distribution of identified organisms within Coal Oil Point") +
+                labs( x = "Longitude", y = "Latitude") +
+                theme_gray() +
+                theme(legend.key.size = unit(0.5, "cm"), 
+                axis.text = element_text(size = 7), 
+                )
+
+ggplotly(Order_Plot_counts, tooltip = c("order", "count"))
+```
+
+## Lets now try creating a heatmap of the data showing higher densities where the higher counts exist.
+```{r}
+#First lets create a subset of data that only looks at a specific order, Since hymenpotera has good representation and is a group of interest lets use that.
+data_hymenpotera <-occurence_order_subset_sep_unique %>% 
+  dplyr::filter(order == "Hymenoptera")
+```
+
+## Basemap for barebones structure
+```{r}
+#tmap_mode("plot")
+tmap_mode("view")
+tm_shape(copr_boundary_2020) +
+  tm_borders() +
+  tm_compass(position = c("left", "top")) +
+  tm_layout(main.title = "Coal Oil Point Reserve")
+#Basic map
+
+```
+
+```{r}
+#tmap_mode("view")
+tmap_mode("plot")
+tm_shape(copr_boundary_2020) +
+  tm_borders() +
+   tm_graticules() +
+  tm_shape(data_hymenpotera) + tm_bubbles(size = "count", col = "red") +
+   tm_compass(position = c("left", "top")) +
+ 
+  
+  tm_layout(main.title = "Coal Oil Point Reserve Hymenpotera Observations")
+```
+
