@@ -1,5 +1,5 @@
 ---
-title: "Polygon_presentation"
+title: "Filter_Polygon_presentation"
 output: html_document
 ---
 
@@ -15,6 +15,19 @@ knitr::opts_chunk$set(echo = TRUE)
 #The goal of this script is to:
 #draw boundary of copr on map
 #Trim specimen_data (occurrence.txt) based on copr boundary creating new file that only contains specimens whose coordinates are within that boundary
+```{r}
+#If you havent installed these packages before, delete the '#' in front of the install.packages("") name and run the code. once this has been loaded make sure to re add the '#' so it isn't installed multiple times when running other code
+
+#install.packages("ggplot2") 
+#install.packages("sf") 
+#install.packages("raster") 
+#install.packages("rgdal") 
+#install.packages("dplyr") 
+#install.packages("tidyr") 
+#install.packages("plotly")  
+#install.packages("tmap")
+```
+
 
 ```{r}
 #required libraries
@@ -43,7 +56,6 @@ specimen_data <- subset(specimen_data, !is.na(order) & !is.na(decimalLongitude) 
 #read boundary from shp file
 copr_boundary_2020 <- st_read("COPR_Boundary_2010/COPR_boundary2010.shp") #Vector type. 
 
-copr_boundary_2020
 #What is the projection of copr_boundary_2020
 
 #Global datum is NAD83. California zone 5 is code: ESPG:2229.
@@ -206,8 +218,8 @@ data_hymenpotera <-occurence_order_subset_sep_unique %>%
 
 ## Basemap for barebones structure
 ```{r}
-#tmap_mode("plot")
-tmap_mode("view")
+tmap_mode("plot")
+#tmap_mode("view")
 tm_shape(copr_boundary_2020) +
   tm_borders() +
   tm_compass(position = c("left", "top")) +
@@ -217,12 +229,77 @@ tm_shape(copr_boundary_2020) +
 ```
 
 ```{r}
-#tmap_mode("view")
-tmap_mode("plot")
+tmap_mode("view")
+#tmap_mode("plot")
 tm_shape(copr_boundary_2020) +
   tm_borders() +
    tm_graticules() +
   tm_shape(data_hymenpotera) + tm_bubbles(size = "count", col = "red") +
+   tm_compass(position = c("left", "top")) +
+ 
+  
+  tm_layout(main.title = "Coal Oil Point Reserve Hymenpotera Observations")
+```
+```{r}
+#Lets organize all of them into seperate data sets while we're at it. 
+data_amphipoda <- occurence_order_subset_sep_unique %>% 
+  dplyr::filter(order == "Amphipoda")
+
+data_araneae <- occurence_order_subset_sep_unique %>% 
+  dplyr::filter(order == "Araneae")
+
+data_archaeognatha <- occurence_order_subset_sep_unique %>% 
+  dplyr::filter(order == "Archaeognatha")
+
+data_coleoptera <- occurence_order_subset_sep_unique %>% 
+  dplyr::filter(order == "Coleoptera")
+
+data_decapoda <- occurence_order_subset_sep_unique %>% 
+  dplyr::filter(order == "Decapoda")
+
+data_dermaptera <- occurence_order_subset_sep_unique %>% 
+  dplyr::filter(order == "Dermaptera")
+
+data_diptera <- occurence_order_subset_sep_unique %>% 
+  dplyr::filter(order == "Diptera")
+
+data_ephemeroptera <- occurence_order_subset_sep_unique %>% 
+  dplyr::filter(order == "Ephemeroptera")
+
+data_hemiptera <- occurence_order_subset_sep_unique %>% 
+  dplyr::filter(order == "Hemiptera")
+
+data_isopoda <- occurence_order_subset_sep_unique %>% 
+  dplyr::filter(order == "Isopoda")
+
+data_lepidoptera <- occurence_order_subset_sep_unique %>% 
+  dplyr::filter(order == "Lepidoptera")
+
+data_odonata <- occurence_order_subset_sep_unique %>% 
+  dplyr::filter(order == "Odonata")
+
+data_orthoptera <- occurence_order_subset_sep_unique %>% 
+  dplyr::filter(order == "Orthoptera")
+
+data_pedunculata <- occurence_order_subset_sep_unique %>% 
+  dplyr::filter(order == "Pedunculata")
+
+data_psocodea <- occurence_order_subset_sep_unique %>% 
+  dplyr::filter(order == "Psocodea")
+
+data_sessilia <- occurence_order_subset_sep_unique %>% 
+  dplyr::filter(order == "Sessilia")
+
+```
+
+```{r}
+tmap_mode("view")
+#tmap_mode("plot")
+tm_shape(copr_boundary_2020) +
+  tm_borders() +
+   tm_graticules() +
+  tm_shape(data_hymenpotera) + tm_bubbles(size = "count", col = "red") +
+  tm_shape(data_decapoda) + tm_bubbles(size = "count", col = "blue") +
    tm_compass(position = c("left", "top")) +
  
   
