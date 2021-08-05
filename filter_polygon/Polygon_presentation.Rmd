@@ -45,6 +45,8 @@ library(tmap) #Another interactive map package
 ```{r}
 #file that contains over 75K of specimen data with lat/long coordinates
 specimen_data <- read.delim(file="occurrence.txt",header=TRUE)
+
+#NOTE: If this returns Error in file(file, “rt”) : cannot open the connection, then most likely this is a path issue specific to your computer. First try changing the code to: specimen_data <- read.delim(file ="filter_polygon/occurrence.txt",header=TRUE)
 ```
 
 ```{r}
@@ -54,7 +56,9 @@ specimen_data <- subset(specimen_data, !is.na(order) & !is.na(decimalLongitude) 
 
 ```{r}
 #read boundary from shp file
-copr_boundary_2020 <- st_read("COPR_Boundary_2010/COPR_boundary2010.shp") #Vector type. 
+copr_boundary_2020 <- st_read("COPR_Boundary_2010/COPR_boundary2010.shp") #Vector type.
+
+#NOTE: If this is unable to be read it may again be a path issue, try: copr_boundary_2020 <- st_read("filter_polygon/COPR_Boundary_2010/COPR_boundary2010.shp")
 
 #What is the projection of copr_boundary_2020
 
