@@ -7,7 +7,7 @@ This GitHub repository for scripts that map occurrence records, either from obse
 
 
 ### Citation
-Started by Katja Seltmann, 2021 (add your names here)
+Started by Katja Seltmann, 2021. Assisted by JT Miller, 2021 (add your names here)
 
 ### Filter Polygon
 
