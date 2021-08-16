@@ -1,0 +1,231 @@
+---
+title: "COPR_Checking_Data"
+author: "JT_Miller"
+date: "6/23/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# started by Katja Seltmann, 2020
+# Assisted by JT Miller, 2021
+# Script to map occurrence records of species (lat/long) that occur only within the boundaries of Coal Oil Point Reserve (shp file)
+# COPR occurrence records in tab-delimited format: https://ucsb.box.com/s/7xp88xhg1xn7decsv0t3ll8du653deub
+# COPR boundary files: https://ucsb.box.com/s/nd1s0e3ted8zsu0ir4wbxu7qpe94ht8o
+
+
+#The goal of this script is to:
+#draw boundary of copr on map
+#Trim specimen_data (occurrence.txt) based on copr boundary creating new file that only contains specimens whose coordinates are within that boundary
+#Provide validation that the code trims the specimen data to the same level as the program ARCGIS.
+
+```{r}
+#required libraries
+library(ggplot2) #library for visualization and plotting.
+library(sf) #Spatial objects package, very useful for vector data types
+library(raster) #Spatial object package for raster type data
+library(rgdal) #Spatial objects
+library(dplyr) #Cleaning and data wrangling 
+library(tidyr) #Very large package for data organization
+library(plotly) #Makes ggplots interactive 
+library(tmap) #Another interactive map package
+```
+
+## Bringing in the data
+```{r}
+#Bringing in data from mammals in coal oil pt.
+specimen_data_test <- read.csv("GBIF_mammals_voucher.csv")
+```
+
+```{r}
+#Bringing in the coal oil pt reserves shp file boundary
+copr_boundary <- st_read("COPR_Boundary_2010/COPR_boundary2010.shp")
+```
+## Filter out the data 
+```{r}
+#remove rows where order, lat/long do not exist
+specimen_data_test <- subset(specimen_data_test, !is.na(order) & !is.na(decimalLongitude) & !is.na(decimalLatitude))
+```
+
+## Check the CRS (Coordinate Reference System) of your data, if NA then one must be assigned 
+```{r}
+crs(specimen_data_test)
+#CRS is NA therefore we need to assign it one 
+```
+## Assigning the CRS
+```{r}
+#WGS84 is the most common used coordinate reference system for GPS's, note that part of the upcoming code uses the ESPG code 4326, this is just a simplification of WGS84 that has been programmed into R so that you don't have to use a proj 4 string when assigning the CRS. 
+
+##NOTE: This CRS was assigned based off GPS's using WGS84 and there not being any available metadata. The first steps that should be taken is to look at your data's metadata for information about the CRS if available and failing that look under column names for possible info (SRS is a synonym of CRS!) In this case you can find there is a SRS column called verbatimSRS however only NA is returned for all observations. In the case that this data's CRS is actually NAD83, you can assign it the ESPG:4269, however in this case you will find that it doesnt make a difference in our output (since both coordinate systems share the same original referencing). For clarity though it should be noted that assigning the correct CRS is necessary when working with geospatial data. 
+
+#First lets assign the data the WGS84 CRS, notice that this changes it into a sf or simple features object.  
+
+occur_sf_test <- st_as_sf(specimen_data_test, coords = c('decimalLongitude', 'decimalLatitude'), crs = 4326)
+
+#Check the extents to see if we are dealing with the same units
+extent(occur_sf_test) #Notice this is in decimal degrees format
+extent(copr_boundary) #Notice this is in easting northing format
+
+#Now lets transform this new sf object to the crs using our boundary data 
+
+occur_sf_test_new <- st_transform(occur_sf_test, 
+                             st_crs(copr_boundary))
+#Check the extents, they appear to be in the same range 
+extent(occur_sf_test_new)
+
+extent(copr_boundary)
+
+#Technically the ESPG:4269 (NAD83) and ESPG:4326 (WGS84) are not equivalent, for most applications they can treated as equivalent. The approximate error induced by this transformation is ~1m which for many cases can be masked by the present experimental error. See metadata thats part of the readme for more sources, the source for the transformation error can be found here: https://epsg.org/transformation_1750/NAD83-to-WGS-84-54.html?sessionkey=npd9npmm3p
+```
+## Lets graph the data
+```{r}
+ggplot() +
+  geom_sf(data = copr_boundary, fill = "palegreen", color = "black") +
+  geom_sf(occur_sf_test_new, mapping = aes(geometry = geometry), size = 1) +
+  ggtitle("Occurence of Mammal Specimens at Coal Oil Point")
+#Okay, it seems that the data is including lots of points that are outside the specified range of the boundary shape
+```
+```{r}
+#This is the method for subsetting our data to only include points that are within the shp files boundaries. 
+occur_sf_test_new_subset <- occur_sf_test_new[copr_boundary,]
+```
+
+```{r}
+ggplot() +
+  geom_sf(data = copr_boundary, fill = "palegreen", color = "black") +
+  geom_sf(occur_sf_test_new_subset, mapping = aes(geometry = geometry), size = 1) +
+  ggtitle("Occurence of Plant Specimens within Coal Oil Point")
+
+#And thats what we want! 
+```
+
+## Lets check the whether this data output is the same as the one provided by ARC GIS clipping
+```{r}
+specimen_data_test_clipped <- read.csv("GBIF_mammals_voucher_clipped.csv") #The final data clipped using ARCmaps
+
+#If you look at your enviroment you will notice that the clipped data and the final data output we made (called occur_sf_test_new_subset) both have only 57 observations (rows). Therefore both methods give you the same output. 
+```
+
+## Lets graph real quick to make sure its actually the same data points
+```{r}
+#To do this we'll have to assign the clipped data CRS and transform it to the bounded data's crs
+occur_sf_test_clipped <- st_as_sf(specimen_data_test_clipped, coords = c('decimalLon', 'decimalLat'), crs = 4326)
+
+occur_sf_test_clipped_new <- st_transform(occur_sf_test_clipped, 
+                             st_crs(copr_boundary))
+
+#And Subset to only include the data thats within the shp files boundary
+occur_sf_test_clipped_new_subset <- occur_sf_test_clipped_new[copr_boundary,]
+```
+
+```{r}
+#This is the cut data from clipped data from ARC GIS 
+ggplot() +
+  geom_sf(data = copr_boundary, fill = "palegreen", color = "black") +
+  geom_sf(occur_sf_test_clipped_new_subset, mapping = aes(geometry = geometry), size = 1) +
+  ggtitle("Occurence of Plant Specimens within Coal Oil Point")
+
+#This is the data bounded using the code mentioned above
+ggplot() +
+  geom_sf(data = copr_boundary, fill = "palegreen", color = "black") +
+  geom_sf(occur_sf_test_new_subset, mapping = aes(geometry = geometry), size = 1) +
+  ggtitle("Occurence of Plant Specimens within Coal Oil Point")
+
+#As we can see this gives an identical output  
+```
+## If we wanted to now take this newly subsetted data of whats inside the preserve and make a .csv file out of it 
+```{r}
+##Export as a csv file
+
+directory <- getwd() #Use this to find the file path of your working directory (specific to your computer)
+directory
+
+#NOTE: The below code shows my personal file path directory, therefore this line wont run on your computer, to correct this take the output from the variable directory that you just created and copy paste it into the "" Also note that the last part of that directory /occur.csv will determine the name of the file you want to export as. 
+
+write.csv(occur_sf_test_new_subset, "C:/Users/JTroo/Desktop/Github/occurence_maps/occurrence-maps/filter_polygon/occur.csv", row.names = TRUE)
+
+#This csv file should show up inside the folder of your file path named as /occur.csv (this can be changed as mentioned above)
+
+```
+
+# The rest of the code is showing some methods of visualization that you may find helpful
+
+## Lets try making a nicer graph that shows taxonomic order in relation to the data points
+```{r}
+#Now lets graph by order.  
+
+Order_Plot <- ggplot() +
+                geom_sf(data = copr_boundary_2020, fill = "grey", color = "black") +
+                geom_sf(occur_sf_test_new_subset, mapping = aes(geometry = geometry, color = order,)) +
+                ggtitle("Distribution of identified organisms within Coal Oil Point") +
+                labs( x = "Longitude", y = "Latitude") +
+                theme_gray() +
+                theme(legend.key.size = unit(0.5, "cm"), 
+                axis.text = element_text(size = 7), 
+                )
+
+Order_Plot #While this is more informative, its rather hard to read
+```
+## Lets try making an interactive plotly map so its easier to interpret
+```{r}
+#Making an interactive map, where when you hover over each data point you may see the Taxonomic Order of the observed specimen. 
+ggplotly(Order_Plot) #This is alot better, however there is probably some overlapping points due to specimens being found in the same location. 
+
+```
+## Lets figure out a way to make it where we can get counts for each unique order with the same gps coordinate location so that we can see how many reaccurances appear in a location. 
+```{r}
+#Seems we need to seperate out the geometry column into new columns 
+
+#Create two new columns based off the geometry column, name these lat lon respectively 
+
+occurence_order_test_subset_sep <- occur_sf_test_new_subset %>%
+  dplyr::mutate(lat = sf::st_coordinates(.)[,2],
+                lon = sf::st_coordinates(.)[,1])
+
+```
+
+```{r}
+#This is the correct way to sum up counts of the observations per coordinate point
+occurence_order_test_subset_sep_unique <- occurence_order_test_subset_sep %>% 
+  dplyr::group_by(lat, lon) %>% #Designate unique lat lon
+  dplyr::mutate(count = n()) #Create a new column with the counts 
+```
+
+## Lets graph with both ggplot and ggplotly to see if the counts appear next to the data points. 
+```{r}
+#Now lets graph by order.  
+
+Order_Plot_counts <- ggplot() +
+                geom_sf(data = copr_boundary_2020, fill = "grey", color = "black") +
+                geom_sf(occurence_order_test_subset_sep_unique, mapping = aes(geometry = geometry,color = order, count = count)) +
+                ggtitle("Distribution of identified organisms within Coal Oil Point") +
+                labs( x = "Longitude", y = "Latitude") +
+                theme_gray() +
+                theme(legend.key.size = unit(0.5, "cm"), 
+                axis.text = element_text(size = 7), 
+                )
+
+ggplotly(Order_Plot_counts, tooltip = c("order", "count"))
+```
+## Lets now try creating a heatmap of the data showing higher densities where the higher counts exist.
+```{r}
+#First lets create a subset of data that only looks at a specific order
+data_rodentia <-occurence_order_test_subset_sep_unique %>% 
+  dplyr::filter(order == "Rodentia")
+```
+
+## the tmap package allows use to visualize the location of coal oil point as well as provides context of the density of observations
+```{r}
+tmap_mode("view") #The two modes "view" and "plot" may be used to visualize the data differently
+#tmap_mode("plot")
+tm_shape(copr_boundary) +
+  tm_borders() +
+   tm_graticules() +
+  tm_shape(data_rodentia) + tm_bubbles(size = "count", col = "red") +
+   tm_compass(position = c("left", "top")) +
+ 
+  
+  tm_layout(main.title = "Coal Oil Point Reserve Rodentia Observations")
+```
