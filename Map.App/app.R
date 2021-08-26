@@ -24,6 +24,10 @@ occurrence_filtered <- read.csv("occur2.csv")
 copr_boundary <- st_read("COPR_Boundary_2010/COPR_boundary2010.shp")
 
 #Lets organize all of them into seperate data sets while we're at it. 
+
+
+
+
 data_amphipoda <- occurrence_filtered %>% 
     dplyr::filter(order == "Amphipoda")
 
@@ -87,10 +91,7 @@ ui <- fluidPage(
     sidebarLayout(
         sidebarPanel(
             helpText("Create distribution maps of the locations of identified organisms in Coal Oil Point Reserve"), 
-    checkboxGroupInput(inputId = "Order",
-                       label = "Choose Taxonomic Order:",
-                       choices = c("Amphipoda", "Araneae", "Archaeognatha", "Coleoptera", "Decapoda", "Dermaptera", "Diptera", "Ephemeroptera", "Hemiptera", "Hymenoptera", "Isopoda", "Lepidoptera", "Odonata", "Orthoptera", "Pedunculata", "Psocodea", "Sessilia"),
-                       selected = "data_hymenoptera"), 
+    selectInput("taxa", "Choose Taxonomic Order", choices = occurrence_filtered[2]), 
         ),
     
     # Show a plot of the generated distribution
@@ -103,38 +104,19 @@ ui <- fluidPage(
 
 server <- function(input, output) {
     
+    selected <- reactive(occurrence_filtered %>% filter(order == input$taxa %>% select(order, geometry)))
+    
     output$map <- renderPlot({
-        # generate bins based on input$bins from ui.R
-         data <- switch(input$Order, "Amphipoda" = occurrence_filtered$data_amphipoda, 
-                                     "Araneae" = occurrence_filtered$data_araneae,
-                                     "Archaeognatha" = occurrence_filtered$data_archaeognatha,
-                                     "Coleoptera" = occurrence_filtered$data_coleoptera,
-                                     "Decapoda" = occurrence_filtered$data_decapoda,
-                                     "Dermaptera" = occurrence_filtered$data_dermaptera,
-                                     "Diptera" = occurrence_filtered$data_diptera,
-                                     "Ephemeroptera" = occurrence_filtered$data_ephemeroptera,
-                                     "Hemiptera" = occurrence_filtered$data_hemiptera,
-                                     "Hymenoptera" = occurrence_filtered$data_hymenpotera,
-                                     "Isopoda" = occurrence_filtered$data_isopoda,
-                                     "Lepidoptera" = occurrence_filtered$data_lepidoptera,
-                                     "Odonata" = occurrence_filtered$data_odonata, 
-                                     "Orthoptera" = occurrence_filtered$data_orthoptera, 
-                                     "Pedunculata" = occurrence_filtered$data_pedunculata,
-                                     "Psocodea" = occurrence_filtered$data_psocodea,
-                                     "Sessilia" = occurrence_filtered$data_sessilia)
-          ggplot() +
-             geom_sf(data = copr_boundary, fill = "grey", color = "black") +
-             geom_sf(data = data, mapping = aes(x = lon, y = lat)) +
-             labs( x = "Longitude", y = "Latitude") +
-             theme_gray() +
-             theme(legend.key.size = unit(0.5, "cm"), 
-                   axis.text = element_text(size = 7), 
-             ) 
+        selected() %>% 
+            ggplot() +
+            geom_sf( mapping = aes(geometry = geometry), size = 1) +
+            geom_sf(data = copr_boundary, fill = "palegreen", color = "black")
+    })
                         
                         
                         
         
-    })
+    
 }
 
 # Run the application 
