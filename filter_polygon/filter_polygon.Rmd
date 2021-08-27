@@ -338,7 +338,7 @@ occur_sf_order_new_subset <- occur_sf_order_new[copr_boundary_2020,]
 directory <- getwd()
 directory
 
-write.csv(occur_sf_order_new_subset, "C:/Users/JTroo/Desktop/Github/occurence_maps/occurrence-maps/filter_polygon/occur.csv", row.names = TRUE)
+#write.csv(occur_sf_order_new_subset, "C:/Users/JTroo/Desktop/Github/occurence_maps/occurrence-maps/filter_polygon/occur.csv", row.names = TRUE)
  #So this is the exported dataframe for just taxonomy and geo coordinates. 
 ```
 
@@ -379,7 +379,7 @@ occur_sf_full_new_subset <- occur_sf_full_new[copr_boundary_2020,]
 ##Export as a csv file
 
 
-write.csv(occur_sf_full_new_subset, "C:/Users/JTroo/Desktop/Github/occurence_maps/occurrence-maps/filter_polygon/occur_full.csv", row.names = TRUE)
+#write.csv(occur_sf_full_new_subset, "C:/Users/JTroo/Desktop/Github/occurence_maps/occurrence-maps/filter_polygon/occur_full.csv", row.names = TRUE)
  #So this is the exported dataframe with all of the original data included.  
 ```
 
@@ -443,47 +443,9 @@ ggplotly(Order_Plot)
 #Well we can make a hover map, however I think the end goal for this would be I want to show the number of observations at each given data point to show how many times that order was observed in that location. There are 98 unique observations while there is 1603 observations therefore there should be a large number of overlap. 
 ```
 
-```{r}
-#Lets try creating a column that assigns values for each observation
-#This is wrong do not use
-
-#occur_count_unique <- occur_sf_order_new_subset %>% group_by(order) %>% mutate(Count = n_distinct(geometry))
-```
 
 
 
-
-
-```{r}
-occur_count_unique
-
-fig <- ggplotly(
-  ggplot(data = copr_boundary_2020, fill = "grey", color = "black")) +
-    geom_sf(occur_count_unique, mapping = aes(geometry = geometry))
-)
-
-fig
-```
-
-```{r}
-#Now lets graph by order.  
-
-Order_Plot2 <- ggplot() +
-                geom_sf(data = copr_boundary_2020, fill = "grey", color = "black") + 
-  
-                geom_sf(occur_count_unique, mapping = aes(geometry = geometry, color = order,)) +
- geom_bin2d() +
-                ggtitle("Distribution of identified organisms within Coal Oil Point") +
-                labs( x = "Longitude", y = "Latitude", fill = "# of Observations") +
-                theme_gray() +
-                theme(legend.key.size = unit(0.5, "cm"), 
-                axis.text = element_text(size = 7), 
-                )
-
-Order_Plot2
-
-ggplotly(Order_Plot2)
-```
 
 
 ```{r}
@@ -493,7 +455,7 @@ ggplotly(Order_Plot2)
 occurence_order_subset_sep <- occur_sf_order_new_subset %>%
   dplyr::mutate(lat = sf::st_coordinates(.)[,2],
                 lon = sf::st_coordinates(.)[,1])
-occurence_all_subset_sep
+
 ```
 
 
@@ -575,6 +537,8 @@ data_hymenpotera <-occurence_order_subset_sep_unique %>%
 
 data_decapoda <- occurence_order_subset_sep_unique %>% 
   dplyr::filter(order == "Decapoda")
+
+data
 ```
 
 
@@ -612,14 +576,7 @@ ggplot(data_hymenpotera, aes(x=lon, y=lat) ) +
   stat_density_2d(aes(fill = ..level..), geom = "polygon", colour="white") 
   
 ```
-```{r}
-copr_df <- fortify(copr_boundary_2020)
 
-ggplot(data_hymenpotera, aes(x = "lon", y = "lat")) +
-  geom_path(data = copr_df, 
-            aes(geometry = geometry)) +
-  stat_density2d(geom = "polygon", aes(fill = ..level..), contour = TRUE)
-```
 
 ```{r}
 #Now lets graph by hym 
@@ -636,9 +593,6 @@ hym_Plot <- ggplot() +
 
 hym_Plot +geom_density_2d_filled(alpha = 0.5)
 
-ggplot(data_hymenpotera, aes( lon, lat)) +
-  stat_density_2d(geom = "polygon", aes(alpha = ..level..)) +
-   geom_sf(data = copr_boundary_2020, fill = NA)
 
 ggplot() + 
   geom_sf(data = copr_boundary_2020) +
@@ -654,8 +608,8 @@ ggplot() +
 
 ```{r}
 ggplot() +
-  geom_sf(data = copr_boundary_2020) +
-  geom_bin2d(data = data_hymenpotera_distict, aes(x = lon, y = lat))
+  geom_sf(data = copr_boundary_2020, ) + 
+  geom_density_2d_filled(data = data_hymenpotera,  contour_var = "density", aes(x = lon, y = lat, alpha = ..level.., fill = count), colour = "red")
 ```
 
 
@@ -677,7 +631,7 @@ ggplot() +
 extent(copr_boundary_2020)
 ggplot(data_hymenpotera, aes(x = lon, y = lat)) +
   geom_point() +
-  coord_equal() + 
+  #coord_equal() + 
   xlab('Longitude') + 
   ylab('Latitude') + 
   stat_density2d(aes(fill = ..level..), alpha = .5,
@@ -698,6 +652,7 @@ copr_boundary_df
 
 
 ```{r}
+#This is the closest i've gotten to the correct type of heatmapping. However Im still not really satisfied with it due to the bounding box seeming to cut data off as well as random lines intersecting my plot. 
 ggplot() +
   geom_sf(data = copr_boundary_2020) + 
   stat_density_2d(data = occurence_order_subset_sep_unique, geom = "polygon" , aes(x = lon, y = lat, alpha = ..level.., fill = count), colour = "red")
@@ -705,7 +660,16 @@ ggplot() +
 ```{r}
 ggplot() +
   geom_sf(data = copr_boundary_2020) + 
-  stat_density_2d(data = data_decapoda , aes(x = lon, y = lat), colour = "red")
+  geom_density_2d_filled(data = data_hymenpotera, contour_var = "ndensity", geom = "polygon" , aes(x = lon, y = lat, alpha = after_stat(level), fill = count), colour = "red")
+```
+
+
+
+
+```{r}
+ggplot() +
+  geom_sf(data = copr_boundary_2020) + 
+  geom_density_2d_filled(data = data_decapoda, contour_var = "ndensity", geom = "polygon" , aes(x = lon, y = lat, alpha = after_stat(level), fill = count), colour = "red")
 ```
 ```{r}
 m <- ggplot(data_hymenpotera, aes(x = lon, y =lat)) +
@@ -851,14 +815,56 @@ ggplot() +
 ```{r}
 specimen_data_order #This is the filtered data for coordinates with order attached. 
 
-specimen_data_order_unique <- specimen_data_order %>%  
-  dplyr::group_by(decimalLatitude, decimalLongitude) %>% 
+occurence_all_subset_new_bound <- occur_sf_orig_all[copr_shp_transformed,]
+
+#Seems we need to seperate out the geometry column into new columns 
+
+occurence_all_subset_new_bound_sep <- occurence_all_subset_new_bound %>%
+  dplyr::mutate(lat = sf::st_coordinates(.)[,2],
+                lon = sf::st_coordinates(.)[,1])
+
+
+specimen_new_bound_count <- occurence_all_subset_new_bound_sep %>%  
+  dplyr::group_by(lat, lon) %>% 
   dplyr::mutate(count = n())#This line is that one that creates a number of observations associated with each data point to tell us how many are in this location.
 
 
-data_hymenpotera_orig_crs <-specimen_data_order_unique %>% 
+data_hymenpotera_orig_crs <-specimen_new_bound_count %>% 
   dplyr::filter(order == "Hymenoptera")
 ```
+```{r}
+#Using: https://gis.stackexchange.com/questions/168886/r-how-to-build-heatmap-with-the-leaflet-package
+
+MASS::bandwidth.nrd(specimen_new_bound_count$lat)
+MASS::bandwidth.nrd(specimen_new_bound_count$lon)
+
+
+
+
+kde <- bkde2D(specimen_new_bound_count$geometry[ , list(1,2)],
+              bandwidth=c(0.002722527, 0.001474659), gridsize = c(100,100))
+CL <- contourLines(kde$x1 , kde$x2 , kde$fhat)
+
+## EXTRACT CONTOUR LINE LEVELS
+LEVS <- as.factor(sapply(CL, `[[`, "level"))
+NLEV <- length(levels(LEVS))
+
+pgons <- lapply(1:length(CL), function(i)
+    Polygons(list(Polygon(cbind(CL[[i]]$x, CL[[i]]$y))), ID=i))
+spgons = SpatialPolygons(pgons)
+
+## Leaflet map with polygons
+leaflet(spgons) %>% addTiles() %>% 
+    addPolygons(color = heat.colors(NLEV, NULL)[LEVS])
+```
+
+
+
+
+
+
+
+
 
 ```{r}
 
@@ -914,16 +920,65 @@ tm1 <- tm_shape(data_hymenpotera) + tm_bubbles(size = "count")
 tmap_arrange(tm1)
 ```
 ```{r}
-tmap_mode("view")
+tmap_mode("plot")
+#tmap_mode("view")
 tm_shape(copr_boundary_2020) +
   tm_borders() +
+   tm_graticules() +
   tm_shape(data_hymenpotera) + tm_bubbles(size = "count", col = "red") +
-  
+   tm_compass(position = c("left", "top")) +
+ 
   
   tm_layout(main.title = "Coal Oil Point Reserve Hymenpotera Observations")
 ```
 
+```{r}
+#occurence_order_subset_sep_unique
+
+tmap_mode("plot")
+tm_shape(copr_boundary_2020) +
+ tm_shape(c("order")) +
+  tm_facets(sync = TRUE, ncol = 2) +
   
+  tm_layout(main.title = "Coal Oil Point Reserve Observations")
+```
+```{r}
+library(leaflet)
+library(KernSmooth)
+library(data.table)
+
+dat <- data.table::fread("occurence.txt")
+
+## Create kernel density output
+kde <- bkde2D(data_hymenpotera[ , list(longitude, latitude)],
+              bandwidth=c(.0045, .0068), gridsize = c(100,100))
+# Create Raster from Kernel Density output
+KernelDensityRaster <- raster(list(x=kde$lon ,y=kde$lat ,z = kde$order))
+
+#create pal function for coloring the raster
+palRaster <- colorNumeric("Spectral", domain = KernelDensityRaster@data@values)
+
+## Leaflet map with raster
+leaflet() %>% addTiles() %>% 
+  addRasterImage(KernelDensityRaster, 
+                 colors = palRaster, 
+                 opacity = .8) %>%
+  addLegend(pal = palRaster, 
+            values = KernelDensityRaster@data@values, 
+            title = "Kernel Density of Points")
+```
+```{r}
+library(ggmap)
+osm <- get_stamenmap(bbox = c(min(5993354), min(1975712), max(5996966), max(1979692
+extent(copr_boundary_2020)
+```
+```{r}
+library(leaflet.extras)
+addHeatmap(specimen_data_order, lng = "decimalLongitude", lat = "decimalLatitude")
+```
+
+
+
 
 
 
