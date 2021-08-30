@@ -16,6 +16,7 @@ library(dplyr) #Cleaning and data wrangling
 library(tidyr) #Very large package for data organization
 library(plotly) #Makes ggplots interactive 
 library(tmap) #Another interactive map package
+library(leaflet)
 
 ###Loading the necessary data for this app
 
@@ -28,91 +29,46 @@ copr_boundary <- st_read("COPR_Boundary_2010/COPR_boundary2010.shp")
 
 
 
-data_amphipoda <- occurrence_filtered %>% 
-    dplyr::filter(order == "Amphipoda")
-
-data_araneae <- occurrence_filtered %>% 
-    dplyr::filter(order == "Araneae")
-
-data_archaeognatha <- occurrence_filtered %>% 
-    dplyr::filter(order == "Archaeognatha")
-
-data_coleoptera <- occurrence_filtered %>% 
-    dplyr::filter(order == "Coleoptera")
-
-data_decapoda <- occurrence_filtered %>% 
-    dplyr::filter(order == "Decapoda")
-
-data_dermaptera <-occurrence_filtered %>% 
-    dplyr::filter(order == "Dermaptera")
-
-data_diptera <- occurrence_filtered %>% 
-    dplyr::filter(order == "Diptera")
-
-data_ephemeroptera <- occurrence_filtered %>% 
-    dplyr::filter(order == "Ephemeroptera")
-
-data_hemiptera <- occurrence_filtered %>% 
-    dplyr::filter(order == "Hemiptera")
-
-data_hymenpotera <-occurrence_filtered %>% 
-    dplyr::filter(order == "Hymenoptera")
-
-data_isopoda <- occurrence_filtered %>% 
-    dplyr::filter(order == "Isopoda")
-
-data_lepidoptera <- occurrence_filtered %>% 
-    dplyr::filter(order == "Lepidoptera")
-
-data_odonata <- occurrence_filtered %>% 
-    dplyr::filter(order == "Odonata")
-
-data_orthoptera <- occurrence_filtered %>% 
-    dplyr::filter(order == "Orthoptera")
-
-data_pedunculata <- occurrence_filtered %>% 
-    dplyr::filter(order == "Pedunculata")
-
-data_psocodea <- occurrence_filtered %>% 
-    dplyr::filter(order == "Psocodea")
-
-data_sessilia <- occurrence_filtered %>% 
-    dplyr::filter(order == "Sessilia")
 
 
-
-###This marks the end of loading in the necessary data for this app
+###This marks the end of loading in the necessary data for this app, 
 
 ui <- fluidPage(
-    
-    # Application title
-    titlePanel("Coal Oil Point Occurrence Data"),
-    
+    titlePanel("Create a Distribution Map"),
     sidebarLayout(
         sidebarPanel(
-            helpText("Create distribution maps of the locations of identified organisms in Coal Oil Point Reserve"), 
-    selectInput("taxa", "Choose Taxonomic Order", choices = occurrence_filtered[2]), 
+            checkboxGroupInput(inputId = "selected_order",
+                        label = "select a order",
+                        choices = c("Amphipoda" = "Amphipoda", "Araneae" = "Araneae", "Archaeognatha" = "Archaeognatha", "Coleoptera" = "Coleoptera", "Decapoda" = "Decapoda", "Dermaptera" = "Dermaptera", "Diptera" = "Diptera", "Ephemeroptera" = "Ephemeroptera", "Hemiptera" = "Hemiptera", "Hymenoptera" = "Hymenoptera", "Isopoda" = "Isopoda", "Lepidoptera" = "Lepidoptera", "Odonata" = "Odonata", "Orthoptera" = "Orthoptera", "Pedunculata" = "Pedunculata", "Psocodea" = "Psocodea", "Sessilia" = "Sessilia"),
+                        selected = c("Amphipoda", "Araneae", "Archaeognatha", "Coleoptera", "Decapoda", "Dermaptera", "Diptera", "Ephemeroptera", "Hemiptera", "Hymenoptera", "Isopoda", "Lepidoptera", "Odonata", "Orthoptera", "Pedunculata", "Psocodea", "Sessilia")
+                         )
         ),
-    
-    # Show a plot of the generated distribution
-    mainPanel(
-        plotOutput("map")
+        mainPanel(
+            plotOutput("myplot")
+        )
     )
-) 
 )
 
 
 server <- function(input, output) {
+    current_order <- reactive({
+        req(input$selected_order)
+        filter(occurrence_filtered, geometry %in% input$selected_order) 
+        })
     
-    selected <- reactive(occurrence_filtered %>% filter(order == input$taxa %>% select(order, geometry)))
-    
-    output$map <- renderPlot({
-        selected() %>% 
-            ggplot() +
-            geom_sf( mapping = aes(geometry = geometry), size = 1) +
-            geom_sf(data = copr_boundary, fill = "palegreen", color = "black")
+    output$myplot <- renderPlot({
+        ggplot() +
+            geom_sf(data = current_order(), mapping = aes(x = lon, y = lat)) +
+            geom_sf(data = copr_boundary, fill = "grey", color = "black") +
+            
+            labs( x = "Longitude", y = "Latitude") +
+            theme_gray() +
+            theme(legend.key.size = unit(0.5, "cm"), 
+                  axis.text = element_text(size = 7), 
+            ) 
     })
-                        
+   
+       
                         
                         
         
