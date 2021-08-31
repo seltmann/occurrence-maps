@@ -150,9 +150,12 @@ ggplot() +
 directory <- getwd()
 directory
 
-write.csv(occur_sf_order_new_subset, "C:/Users/JTroo/Desktop/Github/occurence_maps/occurrence-maps/filter_polygon/occur.csv", row.names = TRUE)
+#write.csv(occur_sf_order_new_subset, "C:/Users/JTroo/Desktop/Github/occurence_maps/occurrence-maps/filter_polygon/occur.csv", row.names = TRUE)
  #So this is the exported dataframe for just taxonomy and geo coordinates. 
 
+write.csv(occurence_order_subset_sep_unique, "C:/Users/jtmil/OneDrive/Desktop/CCBER/occurrence-maps/filter_polygon/occur3.csv",  col.names = NA)
+
+#occurence_order_subset_sep_unique
 ```
 # If we want to visualize our data in other unique ways 
 
@@ -202,7 +205,7 @@ occurence_order_subset_sep_unique <- occurence_order_subset_sep %>%
 
 Order_Plot_counts <- ggplot() +
                 geom_sf(data = copr_boundary_2020, fill = "grey", color = "black") +
-                geom_sf(occurence_order_subset_sep_unique, mapping = aes(geometry = geometry,color = order, count = count)) +
+                geom_sf(occurence_order_subset_sep_unique, mapping = aes(lon, lat,color = order, count = count)) +
                 ggtitle("Distribution of identified organisms within Coal Oil Point") +
                 labs( x = "Longitude", y = "Latitude") +
                 theme_gray() +
@@ -308,5 +311,31 @@ tm_shape(copr_boundary_2020) +
  
   
   tm_layout(main.title = "Coal Oil Point Reserve Hymenpotera Observations")
+```
+
+```{r}
+occurrence_filtered <- read.csv("occur2.csv")
+
+copr_boundary <- st_read("COPR_Boundary_2010/COPR_boundary2010.shp")
+
+#Lets organize all of them into seperate data sets while we're at it. 
+
+
+test<- occurrence_filtered %>% filter(order == "Hymenoptera"
+                                      )
+```
+
+```{r}
+library(leaflet)
+library(leaflet.extras)
+library(maps)
+
+copr <- readOGR(dsn = "COPR_Boundary_2010/COPR_boundary2010.shp")
+
+leaflet() %>% addTiles(copr)
+```
+```{r}
+filter(occurrence_filtered %>% order) %>% 
+           groupby(order, geometry)
 ```
 
