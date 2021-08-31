@@ -20,7 +20,12 @@ library(leaflet)
 
 ###Loading the necessary data for this app
 
-occurrence_filtered <- read.csv("occur2.csv")
+occurrence_filtered <- st_read("occur5.csv", options = "GEOM_POSSIBLE_NAMES=WKT")
+
+occurrence_filtered <- st_set_crs(occurrence_filtered, "+proj=lcc +lat_0=33.5 +lon_0=-118 +lat_1=35.4666666666667
++lat_2=34.0333333333333 +x_0=2000000.0001016 +y_0=500000.0001016
++datum=NAD83 +units=us-ft +no_defs")
+
 
 copr_boundary <- st_read("COPR_Boundary_2010/COPR_boundary2010.shp")
 
@@ -53,13 +58,15 @@ ui <- fluidPage(
 server <- function(input, output) {
     current_order <- reactive({
         req(input$selected_order)
-        filter(occurrence_filtered, geometry %in% input$selected_order) 
+        #occurrence_filtered %>% 
+        filter(occurrence_filtered, order %in% input$selected_order)
         })
     
     output$myplot <- renderPlot({
         ggplot() +
-            geom_sf(data = current_order(), mapping = aes(x = lon, y = lat)) +
-            geom_sf(data = copr_boundary, fill = "grey", color = "black") +
+            
+            geom_sf(data = copr_boundary) +
+            geom_sf(data = current_order(), mapping = aes(geometry = geometry)) +
             
             labs( x = "Longitude", y = "Latitude") +
             theme_gray() +
