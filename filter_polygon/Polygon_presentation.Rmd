@@ -39,6 +39,8 @@ library(dplyr) #Cleaning and data wrangling
 library(tidyr) #Very large package for data organization
 library(plotly) #Makes ggplots interactive 
 library(tmap) #Another interactive map package
+library(ggmap)
+library(tidyverse)
 ```
 
 ## Bringing in the data & cleaning
@@ -137,7 +139,7 @@ occur_sf_order_new_subset <- occur_sf_order_new[copr_boundary_2020,]
 ```{r}
 ggplot() +
   geom_sf(data = copr_boundary_2020, fill = "palegreen", color = "black") +
-  geom_sf(occur_sf_order_new_subset, mapping = aes(geometry = geometry), size = 1) +
+  geom_sf(data_hymenpotera, mapping = aes(geometry = geometry), size = 1) +
   ggtitle("Occurence of Plant Specimens within Coal Oil Point")
 
 #And thats what we want! 
@@ -153,8 +155,19 @@ directory
 #write.csv(occur_sf_order_new_subset, "C:/Users/JTroo/Desktop/Github/occurence_maps/occurrence-maps/filter_polygon/occur.csv", row.names = TRUE)
  #So this is the exported dataframe for just taxonomy and geo coordinates. 
 
-write.csv(occurence_order_subset_sep_unique, "C:/Users/jtmil/OneDrive/Desktop/CCBER/occurrence-maps/filter_polygon/occur3.csv",  col.names = NA)
 
+#This is a new way to format the writing our .csv file. Importantly it maintains the geometry column and keeps the other columns for being messed up. 
+st_write(occurence_order_subset_sep_unique, "C:/Users/jtmil/OneDrive/Desktop/CCBER/occurrence-maps/filter_polygon/occur5.csv",  layer_options = "GEOMETRY=AS_WKT")
+
+
+x <- st_read("occur5.csv", options = "GEOM_POSSIBLE_NAMES=WKT")
+x
+crs(x)
+crs(occur_sf_order_new_subset)
+
+x_w_crs <- st_set_crs(x, "+proj=lcc +lat_0=33.5 +lon_0=-118 +lat_1=35.4666666666667
++lat_2=34.0333333333333 +x_0=2000000.0001016 +y_0=500000.0001016
++datum=NAD83 +units=us-ft +no_defs")
 #occurence_order_subset_sep_unique
 ```
 # If we want to visualize our data in other unique ways 
@@ -214,6 +227,8 @@ Order_Plot_counts <- ggplot() +
                 )
 
 ggplotly(Order_Plot_counts, tooltip = c("order", "count"))
+
+rainbow(17)
 ```
 
 ## Lets now try creating a heatmap of the data showing higher densities where the higher counts exist.
