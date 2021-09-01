@@ -26,6 +26,7 @@ occurrence_filtered <- st_set_crs(occurrence_filtered, "+proj=lcc +lat_0=33.5 +l
 +lat_2=34.0333333333333 +x_0=2000000.0001016 +y_0=500000.0001016
 +datum=NAD83 +units=us-ft +no_defs")
 
+cols <- topo.colors(nrow(occurrence_filtered))
 
 copr_boundary <- st_read("COPR_Boundary_2010/COPR_boundary2010.shp")
 
@@ -39,17 +40,18 @@ copr_boundary <- st_read("COPR_Boundary_2010/COPR_boundary2010.shp")
 ###This marks the end of loading in the necessary data for this app, 
 
 ui <- fluidPage(
-    titlePanel("Create a Distribution Map"),
+    titlePanel("Create a Organismal Distribution Map at Coal Oil Point Reserve"),
     sidebarLayout(
         sidebarPanel(
             checkboxGroupInput(inputId = "selected_order",
-                        label = "select a order",
+                        label = "select a taxonomic order",
                         choices = c("Amphipoda" = "Amphipoda", "Araneae" = "Araneae", "Archaeognatha" = "Archaeognatha", "Coleoptera" = "Coleoptera", "Decapoda" = "Decapoda", "Dermaptera" = "Dermaptera", "Diptera" = "Diptera", "Ephemeroptera" = "Ephemeroptera", "Hemiptera" = "Hemiptera", "Hymenoptera" = "Hymenoptera", "Isopoda" = "Isopoda", "Lepidoptera" = "Lepidoptera", "Odonata" = "Odonata", "Orthoptera" = "Orthoptera", "Pedunculata" = "Pedunculata", "Psocodea" = "Psocodea", "Sessilia" = "Sessilia"),
-                        selected = c("Amphipoda", "Araneae", "Archaeognatha", "Coleoptera", "Decapoda", "Dermaptera", "Diptera", "Ephemeroptera", "Hemiptera", "Hymenoptera", "Isopoda", "Lepidoptera", "Odonata", "Orthoptera", "Pedunculata", "Psocodea", "Sessilia")
-                         )
+                        selected = "Hymenoptera"),
+            downloadButton("download", "Download .csv")
         ),
+        
         mainPanel(
-            plotOutput("myplot")
+            plotlyOutput("myplot")
         )
     )
 )
@@ -62,19 +64,33 @@ server <- function(input, output) {
         filter(occurrence_filtered, order %in% input$selected_order)
         })
     
-    output$myplot <- renderPlot({
-        ggplot() +
+    output$myplot <- renderPlotly({
+       p <- ggplot() +
             
             geom_sf(data = copr_boundary) +
-            geom_sf(data = current_order(), mapping = aes(geometry = geometry)) +
+            geom_sf(data = current_order(), mapping = aes(geometry = geometry, color = order, count = count) ) +
             
             labs( x = "Longitude", y = "Latitude") +
             theme_gray() +
             theme(legend.key.size = unit(0.5, "cm"), 
                   axis.text = element_text(size = 7), 
-            ) 
+            )  +
+           scale_colour_manual(limits = occurrence_filtered$order, values = cols)
+       ggplotly(p)
     })
-   
+    
+    data <- reactive({
+        out <- current_order() 
+    })
+    
+    output$download <- downloadHandler(
+        filename = function() {
+            paste0(input$occurrence_filtered, ".csv", sep = "")
+        },
+        content = function(file) {
+            vroom::vroom_write(data(), file, row.names = FALSE)
+        }
+    )
        
                         
                         
