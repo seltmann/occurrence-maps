@@ -7,7 +7,7 @@
 #    http://shiny.rstudio.com/
 #
 
-library(shiny)
+library(shiny) #Required package for the app
 library(ggplot2) #library for visualization and plotting.
 library(sf) #Spatial objects package, very useful for vector data types
 library(raster) #Spatial object package for raster type data
@@ -16,25 +16,21 @@ library(dplyr) #Cleaning and data wrangling
 library(tidyr) #Very large package for data organization
 library(plotly) #Makes ggplots interactive 
 library(tmap) #Another interactive map package
-library(leaflet)
+library(leaflet) #A possible package to use that incorporates interactive maps 
+library(colorspace) #A recommended package that has colors that pop to the human perception. 
+library(vroom) #A package to facilitate downloads 
 
 ###Loading the necessary data for this app
 
-occurrence_filtered <- st_read("occur5.csv", options = "GEOM_POSSIBLE_NAMES=WKT")
+occurrence_filtered <- st_read("occurrence_full_columns.csv", options = "GEOM_POSSIBLE_NAMES=WKT") #bring in the data, use geom_possible to perserve geometry column
 
 occurrence_filtered <- st_set_crs(occurrence_filtered, "+proj=lcc +lat_0=33.5 +lon_0=-118 +lat_1=35.4666666666667
 +lat_2=34.0333333333333 +x_0=2000000.0001016 +y_0=500000.0001016
-+datum=NAD83 +units=us-ft +no_defs")
++datum=NAD83 +units=us-ft +no_defs") #Assigning the CRS since this is lost upon importation. 
 
-cols <- topo.colors(nrow(occurrence_filtered))
+cols <- diverge_hcl(nrow(occurrence_filtered)) #This creates a color palette for our data according to what taxa they represent.
 
 copr_boundary <- st_read("COPR_Boundary_2010/COPR_boundary2010.shp")
-
-#Lets organize all of them into seperate data sets while we're at it. 
-
-
-
-
 
 
 ###This marks the end of loading in the necessary data for this app, 
@@ -67,7 +63,7 @@ server <- function(input, output) {
     output$myplot <- renderPlotly({
        p <- ggplot() +
             
-            geom_sf(data = copr_boundary) +
+            geom_sf(data = copr_boundary, fill = "palegreen", color = "black") +
             geom_sf(data = current_order(), mapping = aes(geometry = geometry, color = order, count = count) ) +
             
             labs( x = "Longitude", y = "Latitude") +
