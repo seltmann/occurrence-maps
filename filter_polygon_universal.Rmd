@@ -1,0 +1,68 @@
+---
+title: "Polygon_filter_universal"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+The goal of this Rmd is to build a template structure of filtering data with dynamic entries that the researcher may set in order to streamline the filtering process for their specific shapfile and organize it. 
+  -Needs a dynamic variable that will be set to include the researcher's data (retrieved from GBIF)
+  -Needs a dynamic variable that will be set to include the researcher's shapefile boundary
+  -Needs to include a grouping of variables that the researcher can elect to choose in order to subset their data out by taxonomic rate (Kingdom, Phylum, Class, Order, Family, Genus, Species )
+  
+```{r}
+#required libraries
+library(ggplot2) #library for visualization and plotting.
+library(sf) #Spatial objects package, very useful for vector data types
+library(raster) #Spatial object package for raster type data
+library(rgdal) #Spatial objects
+library(dplyr) #Cleaning and data wrangling 
+library(tidyr) #Very large package for data organization
+```
+
+  
+## This is where the user should input their occurrence data (stored as occurrence_data)
+```{r}
+occurrence_data <- read.delim(file="insert_file_path_here", header=TRUE) #Place your file path here
+```
+
+## This is where the user should input their boundary shapefile (stored as boundary_shp)
+```{r}
+boundary_shp <-st_read("insert_shp_file_path_here") #Place your shp file path here
+```
+
+### This line of code shouldn't have to be edited by the user, it will remove NAs from the data in latitude and longitude as well as taxonomic ranks.
+```{r}
+occurrence_data_cleaned <- subset(occurrence_data, !is.na(kingdom), !is.na(phylum), !is.na(class), !is.na(order), !is.na(family), !is.na(genus), !is.na(subgenus), !is.na(specificEpithet), !is.na(decimalLongitude), !is.na(decimalLatitude))
+```
+
+## Assigning a CRS to your occurrence data. This part requires a bit of the user's discretion. First run the first line of code and get the variable called get_my_crs, then the user will have to control/command click on the variable get_my_crs. This will open a new window that will allow the user to see if their data has an associated CRS. If they do they should identify if it is NAD83 or WGS84. In the next line of code, the user will now have to enter the 4 digit ESPG code associated with the CRS. The choices are annotated below. 
+```{r}
+get_my_crs <- occurrence_data_cleaned[139] #This line of code filters out the columns to only include vertabtimSRS which is synonymous with CRS. 
+
+occurrence_w_crs <- st_as_sf(occurrence_data_cleaned, coords = c('decimalLongitude', 'decimalLatitude'), crs = 0000) 
+#For WGS84 ESPG input should be: 4326
+#For NAD83 ESPG input should be: 4269
+```
+
+### This will now transform your CRS of your occurrence data to the CRS of your shapefile.
+WARNING!!! CRS transformations can induce error in geospatial data, therefore it is important to refer to this [Error Transformation](https://epsg.org/search/by-name/sessionkey/6ix3cgab2y/searchedterms//crs_page/3/#crs) 
+```{r}
+occurrence_crs_transformed <- st_transform(occurrence_w_crs, st_crs(boundary_shp))
+```
+
+### This filters out the data so that it only includes the data bounded within the shapefile
+```{r}
+occurrence_bounded <- occurrence_crs_transformed[boundary_shp,]
+```
+
+## Here we will save your newly filtered data as a csv. First you must determine your working directory using the first line of code. You will then paste your file path inside the quotes to replace /paste_file_path_here . The part labeled /name_of_output_file.csv will be the name of your file stored as a csv. Feel free to edit the name, however do not change the part that says .csv since this is the file type. 
+```{r}
+directory <- getwd()
+directory #this will give you an output in your console that shows your person computer's file path
+
+st_write(occurrence_bounded, "/paste_file_path_here/name_of_output_file.csv") #Here you will paste your working directory output from the console to whats inside the quotations. Only paste up to /name_of_output_file.csv, feel free to edit this last bit to be a name of your choice for your file. 
+```
+
