@@ -65,4 +65,3 @@ directory #this will give you an output in your console that shows your person c
 
 st_write(occurrence_bounded, "/paste_file_path_here/name_of_output_file.csv") #Here you will paste your working directory output from the console to whats inside the quotations. Only paste up to /name_of_output_file.csv, feel free to edit this last bit to be a name of your choice for your file. 
 ```
-
