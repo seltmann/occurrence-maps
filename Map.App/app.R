@@ -88,7 +88,7 @@ server <- function(input, output) {
             paste0(input$occurrence_filtered, ".csv", sep = "")
         },
         content = function(file) {
-            vroom::vroom_write(data(), file, row.names = FALSE)
+            write.csv(occurrence_filtered, file)
         }
     )
        

@@ -218,7 +218,7 @@ data_sessilia <- occurence_order_subset_sep_unique %>%
 ggplot() +
   geom_sf(data = copr_boundary_2020, fill = "grey", color = "black") +
   geom_density2d(data = data_hymenpotera, aes(x = lon, y = lat)) +
-                 stat_density2d(data = data_hymenpotera, aes(x = lon, y = lat, fill = ..level..))
+                 stat_density2d(data = data_hymenpotera, aes(x = lon, y = lat, fill = ..level..), contour_var = "density", contour = TRUE, adjust =  c(.0045, .0068))
 
 #Well this is kinda of what we're looking for, however the results are quite what we'd expect considering that there should be a high density region at the lower area of the map where there should be a count of 283. 
 ```

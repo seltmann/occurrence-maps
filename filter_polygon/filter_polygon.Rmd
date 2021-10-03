@@ -829,6 +829,7 @@ specimen_new_bound_count <- occurence_all_subset_new_bound_sep %>%
   dplyr::mutate(count = n())#This line is that one that creates a number of observations associated with each data point to tell us how many are in this location.
 
 
+
 data_hymenpotera_orig_crs <-specimen_new_bound_count %>% 
   dplyr::filter(order == "Hymenoptera")
 ```
@@ -978,6 +979,45 @@ addHeatmap(specimen_data_order, lng = "decimalLongitude", lat = "decimalLatitude
 ```
 
 
+# This next section is designated as holding some work I've been doing in the shiny app since the saving feature in it is quite strange.
+
+## Some inputs for the map app that work
+```{r}
+#creates a drop down menu to select the order for us to look at 
+selectInput(inputId = "selected_order",
+                        label = "select a order",
+                        choices = occurrence_filtered[2])
+
+```
+
+
+## Some work in progress outputs for the mapping plot
+
+```{r}
+#This line of code gives an error where it says mapping must be defined in aes, which it clearly is so there probably is something else going on here. 
+server <- function(input, output) {
+    current_order <- reactive({input$selected_order})
+    
+    output$myplot <- renderPlot({
+        ggplot() +
+            geom_sf(current_order, mapping = aes(geometry = geometry)) +
+            geom_sf(copr_boundary)
+    })
+  
+```
+
+
+```{r}
+occurrence_filtered <- read.csv("occur3.csv", header = TRUE)
+
+occurrence_filtered_renamed <- occurrence_filtered %>% rename(tax_order = X)
+ 
+
+```
+
+```{r}
+hym <- dplyr::filter(occurrence_filtered_renamed, tax_order %in% c("Hymenoptera", "Decapoda"))
+```
 
 
 

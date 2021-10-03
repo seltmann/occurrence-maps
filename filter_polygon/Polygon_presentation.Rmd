@@ -82,6 +82,8 @@ names(specimen_data)
 #There are some here that look like they could be right, however if you filter them out you will find that they do not yield a crs. 
 
 #While looking at these some important column names are 134 and 133 which contain decimal latitude and decimal longitude, as well as column 194 that contains taxonomic Order of the specimen found.  
+
+
 ```
 ## Lets filter out the data so that we have only those 3 columns of interest (lat, long, and order)
 ```{r}
@@ -352,5 +354,41 @@ leaflet() %>% addTiles(copr)
 ```{r}
 filter(occurrence_filtered %>% order) %>% 
            groupby(order, geometry)
+```
+```{r}
+
+```
+## Creating a subsetting function for the taxonomic rank
+```{r}
+filter_taxa <- function(data, kingdom = NULL, phylum = NULL, class = NULL, order = NULL, family = NULL, genus = NULL, species = NULL) { #create a function
+  if(!is.null(kingdom)){
+    kingdom_output <- data[data$kingdom %in% kingdom,]
+  }
+  if(!is.null(phylum)){
+    phylum_output <- data[data$phylum %in% phylum,]
+  }
+  if(!is.null(class)){
+    class_output <- data[data$class %in% class,]
+  }
+  if(!is.null(order)){
+    order_output <- data[data$order %in% order,]
+  }
+  if(!is.null(family)){
+    family_output <- data[data$family %in% order,]
+  }
+  if(!is.null(genus)){
+    genus_output <- data[data$genus %in% genus,]
+  }
+  if(!is.null(species)){
+    species_output <- data[data$species %in% species,]
+  }
+  #data_compiled <- data(kingdom_output, phylum_output, class_output, order_output, family_output, genus_output, species_output)
+  #df <- as.data.frame(data_compiled)
+  
+  return(as.data.frame(c(kingdom_output, phylum_output, class_output, order_output, family_output, genus_output, species_output )))
+}
+
+test_taxa_filter <- filter_taxa(specimen_data, kingdom = "Animalia", phylum = "Arthropoda", class = "Insecta", order = "Hymenoptera", family = "Halictidae",  genus = "Augochlorella", species = "Augochlorella pomoniella" )
+
 ```
 
