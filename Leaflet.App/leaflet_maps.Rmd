@@ -1,0 +1,60 @@
+---
+title: "Leaflet_maps"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# This document is focused on exploring the package leaflet in terms of our occurrence data. The goal is to integrate the filtering method into polygons on the interactive maps that leaflet offers, and then transition this to a shiny web application
+
+```{r}
+#Loading in packages
+library(leaflet)
+library(leaflet.extras)
+library(rdgal)
+library(sf)
+library(raster)
+```
+
+```{r}
+copr_boundary <- readOGR("COPR_Boundary_2010/COPR_boundary2010.shp")
+occurrence_data <- read.csv("occur5.csv")
+specimen_data <- read.delim(file="occurrence.txt",header=TRUE)
+```
+
+```{r}
+#Apparently the polygon shape file needs to be in the CRS of the occurrence data for this to work. 
+copr_latlon <- spTransform(copr_boundary, CRS("+proj=longlat +datum=WGS84"))
+```
+
+```{r}
+specimen_data_w_crs <- st_as_sf(specimen_data, coords = c('decimalLongitude', 'decimalLatitude'), crs = 4326)
+
+specimen_data_transformed <- st_transform(specimen_data_w_crs, 
+                             st_crs(copr_latlon))
+                                 
+specimen_data_bounded <- specimen_data_transformed[copr_boundary,]
+```
+
+
+
+```{r}
+#This produces an unfiltered map that shows circle markers for all of the occurrence points
+
+#I also added a layer control option that allows you to toggle on and off the polygon boundary layer. Still working on a solution to getting the data points to filter. https://rstudio.github.io/leaflet/showhide.html 
+map <- leaflet() %>% addTiles() %>% 
+  addPolygons(data = copr_latlon, group = "Coal Oil Point Reserve") %>% 
+  addCircleMarkers(data = specimen_data, lat = ~decimalLatitude, lng = ~decimalLongitude, group = "Occurrence Data") %>% 
+  #layer control
+  addLayersControl(
+    #baseGroups = "Occurrence Data", 
+    overlayGroups = c("Coal Oil Point Reserve", "Occurrence Data"),
+    options = layersControlOptions(collapsed = TRUE) 
+  )
+
+map
+
+```
+
