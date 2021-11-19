@@ -94,7 +94,11 @@ specimen_data_order <- specimen_data[c(134, 133, 194)]
 ```{r}
 #draw boundary from shp file
 ggplot() +
-  geom_sf(data = copr_boundary_2020, fill = "palegreen", color = "black")
+  geom_sf(data = copr_boundary_2020, fill = "palegreen", color = "black") +
+  ggtitle("Coal Oil Point Reserve") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 0, hjust = 1),
+        plot.title = element_text( hjust = 0.5))
 ```
 ## Will these two data sets we have plot together?
 ```{r}
@@ -129,7 +133,11 @@ extent(copr_boundary_2020)
 ggplot() +
   geom_sf(data = copr_boundary_2020, fill = "palegreen", color = "black") +
   geom_sf(occur_sf_order_new, mapping = aes(geometry = geometry), size = 1) +
-  ggtitle("Occurence of Plant Specimens at Coal Oil Point")
+  ggtitle("Organismal Occurrences In Santa Barbara County") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        plot.title = element_text( hjust = 0.5))
+  
 #Okay, it seems that the data is including lots of points that are outside the specified range of the boundary shape
 ```
 ## Lets subset the data to only include whats inside our vector shp file. 
@@ -141,15 +149,25 @@ occur_sf_order_new_subset <- occur_sf_order_new[copr_boundary_2020,]
 ```{r}
 ggplot() +
   geom_sf(data = copr_boundary_2020, fill = "palegreen", color = "black") +
-  geom_sf(data_hymenpotera, mapping = aes(geometry = geometry), size = 1) +
-  ggtitle("Occurence of Plant Specimens within Coal Oil Point")
+  geom_sf(occur_sf_order_new_subset, mapping = aes(geometry = geometry), size = 1) +
+  ggtitle("Arthropod Occurrences within Coal Oil Point") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        plot.title = element_text( hjust = 0.5))
 
 #And thats what we want! 
+```
+### Lets check how many unique represenatives there are for this bounded data
+```{r}
+unique(occur_sf_order_new_subset$order) #There is 17 unique orders in of arthropods in this bounded region
+
 ```
 
 ## If we wanted to now take this newly subsetted data of whats inside the preserve and make a .csv file out of it 
 ```{r}
 ##Export as a csv file
+
+### This section is annotated out since I dont want to run in multiple times. 
 
 directory <- getwd()
 directory
@@ -159,17 +177,17 @@ directory
 
 
 #This is a new way to format the writing our .csv file. Importantly it maintains the geometry column and keeps the other columns for being messed up. 
-st_write(occurence_order_subset_sep_unique, "C:/Users/jtmil/OneDrive/Desktop/CCBER/occurrence-maps/filter_polygon/occur5.csv",  layer_options = "GEOMETRY=AS_WKT")
+#st_write(occurence_order_subset_sep_unique, "C:/Users/jtmil/OneDrive/Desktop/CCBER/occurrence-maps/filter_polygon/occur5.csv",  layer_options = "GEOMETRY=AS_WKT")
 
 
-x <- st_read("occur5.csv", options = "GEOM_POSSIBLE_NAMES=WKT")
-x
-crs(x)
-crs(occur_sf_order_new_subset)
+#x <- st_read("occur5.csv", options = "GEOM_POSSIBLE_NAMES=WKT")
+#x
+#crs(x)
+#crs(occur_sf_order_new_subset)
 
-x_w_crs <- st_set_crs(x, "+proj=lcc +lat_0=33.5 +lon_0=-118 +lat_1=35.4666666666667
-+lat_2=34.0333333333333 +x_0=2000000.0001016 +y_0=500000.0001016
-+datum=NAD83 +units=us-ft +no_defs")
+#x_w_crs <- st_set_crs(x, "+proj=lcc +lat_0=33.5 +lon_0=-118 +lat_1=35.4666666666667
+#+lat_2=34.0333333333333 +x_0=2000000.0001016 +y_0=500000.0001016
+#+datum=NAD83 +units=us-ft +no_defs")
 #occurence_order_subset_sep_unique
 ```
 # If we want to visualize our data in other unique ways 
@@ -185,7 +203,7 @@ Order_Plot <- ggplot() +
                 labs( x = "Longitude", y = "Latitude") +
                 theme_gray() +
                 theme(legend.key.size = unit(0.5, "cm"), 
-                axis.text = element_text(size = 7), 
+                axis.text.x = element_text(angle = 45, size = 7), 
                 )
 
 Order_Plot #While this is more informative, its rather hard to read
@@ -200,18 +218,32 @@ ggplotly(Order_Plot) #This is alot better, however notice that theres 1603 obser
 ## Lets figure out a way to make it where we can get counts for each unique order with the same gps coordinate location so that we can see how many reaccurances appear in a location. 
 ```{r}
 #Seems we need to seperate out the geometry column into new columns 
+library(tidyverse)
+
 
 occurence_order_subset_sep <- occur_sf_order_new_subset %>%
   dplyr::mutate(lat = sf::st_coordinates(.)[,2],
                 lon = sf::st_coordinates(.)[,1])
 occurence_order_subset_sep
 ```
-
+### Now that we've made unique columns for the lat and lon, lets count up the number of observations per order in each location. 
 ```{r}
 #This is the correct way to sum up counts of the observations per coordinate point
 occurence_order_subset_sep_unique <- occurence_order_subset_sep %>% 
   dplyr::group_by(lat, lon) %>% #Designate unique lat lon
-  dplyr::mutate(count = n()) #Create a new column with the counts 
+  dplyr::mutate(count = n()) #Create a new column with the counts
+
+
+
+
+occurence_order_subset_sep_unique %>% 
+  group_by(lat, lon, order) %>% 
+  summarize(sum(count))
+
+occurrence_order_subset_sep_unique %>% 
+  count(order)
+
+unique(occurrence_order_subset_sep_unique$Order)
 ```
 
 ## Lets graph with both ggplot and ggplotly to see if the counts appear next to the data points. 
@@ -223,10 +255,12 @@ Order_Plot_counts <- ggplot() +
                 geom_sf(occurence_order_subset_sep_unique, mapping = aes(lon, lat,color = order, count = count)) +
                 ggtitle("Distribution of identified organisms within Coal Oil Point") +
                 labs( x = "Longitude", y = "Latitude") +
-                theme_gray() +
+                theme_bw() +
                 theme(legend.key.size = unit(0.5, "cm"), 
-                axis.text = element_text(size = 7), 
-                )
+                axis.text = element_text(size = 7),  
+                axis.text.x = element_text(angle = 45, hjust = 1),
+                plot.title = element_text( hjust = 0.5)
+                ) 
 
 ggplotly(Order_Plot_counts, tooltip = c("order", "count"))
 
@@ -360,7 +394,7 @@ filter(occurrence_filtered %>% order) %>%
 ```
 ## Creating a subsetting function for the taxonomic rank
 ```{r}
-filter_taxa <- function(data, kingdom = NULL, phylum = NULL, class = NULL, order = NULL, family = NULL, genus = NULL, species = NULL) { #create a function
+filter_taxa <- function(data, kingdom = NULL, phylum = NULL, class = NULL, order = NULL, family = NULL, genus = NULL, specificEpithet = NULL) { #create a function
   if(!is.null(kingdom)){
     kingdom_output <- data[data$kingdom %in% kingdom,]
   }
@@ -374,21 +408,21 @@ filter_taxa <- function(data, kingdom = NULL, phylum = NULL, class = NULL, order
     order_output <- data[data$order %in% order,]
   }
   if(!is.null(family)){
-    family_output <- data[data$family %in% order,]
+    family_output <- data[data$family %in% family,]
   }
   if(!is.null(genus)){
     genus_output <- data[data$genus %in% genus,]
   }
-  if(!is.null(species)){
-    species_output <- data[data$species %in% species,]
+  if(!is.null(specificEpithet)){
+    specificEpithet_output <- data[data$specificEpithet %in% specificEpithet,]
   }
   #data_compiled <- data(kingdom_output, phylum_output, class_output, order_output, family_output, genus_output, species_output)
   #df <- as.data.frame(data_compiled)
-  
-  return(as.data.frame(c(kingdom_output, phylum_output, class_output, order_output, family_output, genus_output, species_output )))
+  df <- as.data.frame(kingdom_output, phylum_output, class_output, order_output, family_output, genus_output, specificEpithet_output)
+  return(df)
 }
 
-test_taxa_filter <- filter_taxa(specimen_data, kingdom = "Animalia", phylum = "Arthropoda", class = "Insecta", order = "Hymenoptera", family = "Halictidae",  genus = "Augochlorella", species = "Augochlorella pomoniella" )
+test_taxa_filter <- filter_taxa(specimen_data, kingdom = "Animalia", phylum = "Arthropoda", class = "Malacostraca", order = "Decapoda", family = "Palinuridae", genus = "Panulirus", specificEpithet = "crassipes" )
 
 ```
 
