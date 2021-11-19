@@ -17,7 +17,7 @@ library(rgdal)
 library(sf)
 library(raster)
 ```
-
+### Bringing in the data
 ```{r}
 copr_boundary <- readOGR("COPR_Boundary_2010/COPR_boundary2010.shp")
 occurrence_data <- read.csv("occur5.csv")
@@ -25,45 +25,15 @@ specimen_data <- read.delim(file="occurrence.txt",header=TRUE)
 copr_boundary_st <- st_read("COPR_Boundary_2010/COPR_boundary2010.shp")
 ```
 
+### Putting the data in usable form for leaflet
 ```{r}
 #Apparently the polygon shape file needs to be in the CRS of the occurrence data for this to work. 
 copr_latlon <- spTransform(copr_boundary, CRS("+proj=longlat +datum=WGS84"))
 ```
 
 ```{r}
-#Trying to create variables with assigned CRS? https://rstudio.github.io/leaflet/projections.html 
-
-espg4326 <- leafletCRS(crsClass = "L.Proj.CRS", code = "ESPG:4326", 
-                       proj4def = "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs", resolutions = 2^(13:-1), 
-                       origin = c(0,0))
-```
-
-
-
-
-
-```{r}
 specimen_data_w_crs <- st_as_sf(specimen_data, coords = c('decimalLongitude', 'decimalLatitude'), crs = 4326) #Assigning the CRS to WGS84
-
-specimen_data_transformed <- st_transform(specimen_data_w_crs, 
-                             st_crs(copr_boundary_st)) #Transforming the CRS
-                                 
-specimen_data_bounded <- specimen_data_transformed[copr_boundary_st,] #So apparently it needs the variable that st_read was used on in order to use this subsetting method. Performing it with readOGR does not work. 
-
-#we also need to create new columns that specify the long and latitude since that was lost in the crs transformation. 
-specimen_data_bounded_sep <- specimen_data_bounded %>%
-  dplyr::mutate(decimalLatitude = sf::st_coordinates(.)[,2],
-                decimalLongitude = sf::st_coordinates(.)[,1])
 ```
-
-```{r}
-#Now lets try projecting the map in the crs variable we created with leaflet. 
-leaflet(options = leafletOptions(worldCopyJump = F, crs = espg4326)) %>% 
-  addPolygons(data = copr_boundary_st, group = "Coal Oil Point Reserve") %>% 
-  addCircleMarkers(data = specimen_data_bounded_sep, lat = ~decimalLatitude, lng = ~decimalLongitude, group = "Occurrence Data")
-#The warning messages are concerning. This probably needs to be adjusted.
-```
-
 
 ```{r}
 #Warning message was inquired on stackoverflow: https://stackoverflow.com/questions/57223853/how-to-apply-spatial-polygons-to-leaflet-map-using-shp 
@@ -77,6 +47,9 @@ specimen_bounded_sep <- specimen_bounded %>%
   dplyr::mutate(decimalLatitude = sf::st_coordinates(.)[,2],
                 decimalLongitude = sf::st_coordinates(.)[,1])
 
+```
+### Making a leaflet map
+```{r}
 map <- leaflet() %>% addTiles() %>% 
   addPolygons(data = copr_map, group = "Coal Oil Point Reserve") %>% 
   addCircleMarkers(data = specimen_bounded_sep, lat = ~decimalLatitude, lng = ~decimalLongitude, group = "Occurrence Data") %>% 
@@ -90,6 +63,43 @@ map <- leaflet() %>% addTiles() %>%
 map
 
 ```
+
+
+### Lets look at some of the info about our occurrence data.
+```{r}
+#Lets count up species richness
+unique(specimen_bounded_sep$specificEpithet) #160 unique species
+
+richness <- table(specimen_bounded_sep$specificEpithet) #This is the correct way to sum up the number of observations. 
+richness
+```
+
+
+
+```{r}
+#This line of code allows the user to view the map in clusters, meaning that the more you zoom in the more accurate each occurrence is logged.
+map <- leaflet() %>% addTiles() %>% 
+  addPolygons(data = copr_map, group = "Coal Oil Point Reserve") %>% 
+  addMarkers(data = specimen_bounded_sep, lat = ~decimalLatitude, lng = ~decimalLongitude,clusterOptions = markerClusterOptions(),  group = "Occurrence Data") %>% 
+  #layer control
+  addLayersControl(
+    #baseGroups = "Occurrence Data", 
+    overlayGroups = c("Coal Oil Point Reserve", "Occurrence Data"),
+    options = layersControlOptions(collapsed = TRUE) 
+  )
+
+map
+```
+
+
+
+
+
+
+
+
+
+
 ## Lets write this to a .csv
 ```{r}
 specimen_bounded_renamed <- specimen_bounded_sep %>% 
