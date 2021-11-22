@@ -138,6 +138,7 @@ occur_sf_new <- st_transform(occur_sf_orig,
 extent(occur_sf_new)
 
 extent(copr_boundary_2020)
+#blahblahblah
 ```
 
 ```{r}
@@ -231,7 +232,11 @@ occur_cropped_all <- st_crop(occur_sf_new_all, xmin = 5993354, xmax = 5996966,
 ggplot() +
   geom_sf(data = copr_boundary_2020, fill = "palegreen", color = "black") +
   geom_sf(occur_cropped_all, mapping = aes(geometry = geometry), size = 1) +
-  ggtitle("Occurence of Plant Specimens within Coal Oil Point")
+  ggtitle("Organismal Occurrences within Coal Oil Point") +
+  theme_bw() +
+   theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        plot.title = element_text( hjust = 0.5))
+  
 
 ```
 
