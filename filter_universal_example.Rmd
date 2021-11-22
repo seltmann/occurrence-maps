@@ -1,0 +1,207 @@
+---
+title: "filter_universal_example"
+author: "JT Miller"
+date: "11/22/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### This is an example of how to use filter_polygon_universal
+
+The goal of this Rmd is to build a template structure for filtering occurrence data from Darwin Core Archive formatted data aggregates (e.g. GBIF, iDigBio). This script is first designed to filter your occurrence data by using a shapefile to indicate boundary of interest. This script also allows you to filter by taxonomic rank by using the function filter_taxa(). After filtering, there are also 3 visual outputs the user can use from the packages ggplot2, plotly, and leaflet.
+
+Requirements:
+  -Needs organismal occurrence data formatted in the Darwin Core Archive (retrieved from GBIF)
+  -Needs a shapefile that indicates the boundary of interest.
+  -Optionally allows the user to filter out the taxa of interest by increasing levels of taxonomic rank (Kingdom, Phylum, Class, Order, Family, Genus, Species )
+  
+```{r}
+#required libraries
+library(ggplot2) #library for visualization and plotting.
+library(sf) #Spatial objects package, very useful for vector data types
+library(raster) #Spatial object package for raster type data
+library(rgdal) #Spatial objects
+library(dplyr) #Cleaning and data wrangling 
+library(tidyr) #Very large package for data organization
+library(plotly) #Useful for making ggplots interactive
+library(leaflet) #Useful for geographic visualization
+```
+
+  
+## This is where the user should input their occurrence data (stored as occurrence_data)
+```{r}
+occurrence_data <- read.delim(file="occurrence.txt", header=TRUE) #Place your file path here
+```
+
+## This is where the user should input their boundary shapefile (stored as boundary_shp)
+```{r}
+boundary_shp <-st_read("COPR_Boundary_2010/COPR_boundary2010.shp") #Place your shp file path here
+```
+
+### This line of code shouldn't have to be edited by the user, it will remove NAs from the data in latitude and longitude as well as taxonomic ranks.
+```{r}
+occurrence_data_cleaned <- subset(occurrence_data, !is.na(kingdom), !is.na(phylum), !is.na(class), !is.na(order), !is.na(family), !is.na(genus), !is.na(subgenus), !is.na(specificEpithet), !is.na(decimalLongitude), !is.na(decimalLatitude))
+```
+
+### Here the you can select taxonomic ranks they wish to include in their occurrences. This can be done using the taxa_filter() built in the functions script (make sure to run that script for the function to show in your enviroment) This function operates as the following:
+
+taxa_filter(data = data, kingdom = NULL, phylum = NULL, class = NULL, order = NULL, family = NULL, genus = NULL, specificEpithet = NULL)
+
+Here you input your data in the first argument, and can choose which taxonomic ranks they would like to narrow down to. It should be noted that the defaults for these arguments are NULL so they will not be filtered unless otherwise specified. ex. taxa_filter(data, phylum = Arthropoda) will filter the occurrence data down to just arthropods.
+```{r}
+occurrence_data_cleaned_filtered <- taxa_filter(data = occurrence_data_cleaned, kingdom = NULL, phylum = NULL, class = "Insecta", order = "Hymenoptera", family = "Apidae", genus = NULL, specificEpithet = NULL)
+#Replace the NULL with whatever your filtering to. 
+```
+
+
+## Assigning a CRS to your occurrence data. This part requires a bit of the user's discretion. First run the first line of code and get the variable called get_my_crs, then the user will have to control/command click on the variable get_my_crs. This will open a new window that will allow the user to see if their data has an associated CRS. If they do they should identify if it is NAD83 or WGS84. In the next line of code, the user will now have to enter the 4 digit ESPG code associated with the CRS. The choices are annotated below. 
+```{r}
+get_my_crs <- occurrence_data_cleaned_filtered[139] #This line of code filters out the columns to only include vertabtimSRS which is synonymous with CRS. 
+print(get_my_crs) #Will show you the crs
+
+occurrence_w_crs <- st_as_sf(occurrence_data_cleaned_filtered, coords = c('decimalLongitude', 'decimalLatitude'), crs = 4269) 
+#For WGS84 ESPG input should be: 4326
+#For NAD83 ESPG input should be: 4269
+#Other ESPG codes may be looked up here: https://epsg.io/
+```
+
+### This will now transform your CRS of your occurrence data to the CRS of your shapefile.
+WARNING!!! CRS transformations can induce error in geospatial data, therefore it is important to refer to this [Error Transformation](https://epsg.org/search/by-name/sessionkey/6ix3cgab2y/searchedterms//crs_page/3/#crs) 
+```{r}
+occurrence_crs_transformed <- st_transform(occurrence_w_crs, st_crs(boundary_shp))
+```
+
+### This filters out the data so that it only includes the data bounded within the shapefile
+```{r}
+occurrence_bounded <- occurrence_crs_transformed[boundary_shp,]
+```
+
+
+### This is an optional part of the code that will make your life easier if your trying to map your data in other packages besides ggplot2. It basically is designed to break up the geometry column, a byproduct of the crs transformation.
+```{r}
+occurrence_bounded <- occurrence_bounded %>%
+  dplyr::mutate(lat = sf::st_coordinates(.)[,2],
+                lon = sf::st_coordinates(.)[,1])
+```
+
+### This is also an optional part of the code that allows you to record the number of observations for each unique geographic point. 
+```{r}
+occurrence_bounded <- occurrence_bounded %>% 
+  dplyr::group_by(lat, lon) %>% #Designate unique lat lon
+  dplyr::mutate(count = n()) #Create a new column with the counts
+```
+
+
+
+
+## Here we will save your newly filtered data as a csv. First you must determine your working directory using the first line of code. You will then paste your file path inside the quotes to replace /paste_file_path_here . The part labeled /name_of_output_file.csv will be the name of your file stored as a csv. Feel free to edit the name, however do not change the part that says .csv since this is the file type. 
+```{r}
+directory <- getwd()
+directory #this will give you an output in your console that shows your person computer's file path
+
+st_write(occurrence_bounded, "/paste_file_path_here/name_of_output_file.csv", layer_options = "GEOMETRY=AS_WKT") 
+#Here you will paste your working directory output from the console to whats inside the quotations. Only paste up to /name_of_output_file.csv, feel free to edit 'name_of_output_file.csv' to be a name of your choice for your file. 
+
+#The layer_options = "GEOMETRY=AS_WKT" is needed because of the geometry column being problematic post transformation. 
+
+#Another thing to note is that when bringing the data to another script from this csv it won't have the CRS associated with it. To assign a crs look up your crs's project 4 string here: https://spatialreference.org/  
+# You can add the crs in the following way: x_w_crs <- st_set_crs(x, "+proj=lcc +lat_0=33.5 +lon_0=-118")
+```
+
+## If you want to visualize the data, there is several ways to do this using the packages ggplot2 and leaflet. These packages require different transformation methods (ggplot2 is the one we created above so will be demonstrated first)
+
+### ggplot2 Visualization
+```{r}
+ggplot() +
+  geom_sf(data = boundary_shp, fill = "palegreen", color = "black") +
+  geom_sf(occurrence_bounded, mapping = aes(geometry = geometry), size = 1) +
+  ggtitle("My Occurrence Data within my Boundary") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        plot.title = element_text( hjust = 0.5))
+
+```
+
+### If you wanted to get a bit fancier you can make it in plotly and add hover text.
+```{r}
+#Here, you should make some edits based upon what info you want. Imputing a color = *insert a taxonomic rank* is ideal for differentiating the occurrences by whatever taxonomic level you are interested in. 
+plotly_plot <- ggplot() +
+                geom_sf(data = boundary_shp, fill = "grey", color = "black") +
+                geom_sf(occurrence_bounded, mapping = aes(lon, lat, color = genus, count = count)) +
+                ggtitle("My Occurrence Data") +
+                labs( x = "Longitude", y = "Latitude") +
+                theme_bw() +
+                theme(legend.key.size = unit(0.5, "cm"), 
+                axis.text = element_text(size = 7),  
+                axis.text.x = element_text(angle = 45, hjust = 1),
+                plot.title = element_text( hjust = 0.5)
+                ) 
+
+ggplotly(plotly_plot, tooltip = c("genus", "count"))
+```
+
+
+### Leaflet Visualization
+
+#### This package is great for data visualization since it provides geographic context to the occurrence data (including rivers, oceans, etc). To use this package we're going to need to slightly alter the occurrence data/shapefile so that it works with the package. 
+```{r}
+#Bring in the data again
+specimen_data <- read.delim(file="occurrence.txt",header=TRUE)
+
+#We need to know the CRS of the data once again. You can find it by using 
+get_my_crs <- specimen_data[139]
+print(unique(get_my_crs))
+
+#Here we need to assign the CRS to the specimen_data, use the website https://epsg.io/ to find your CRS EPSG code, and enter it in crs =
+specimen_data_w_crs <- st_as_sf(specimen_data, coords = c('decimalLongitude', 'decimalLatitude'), crs = 4269) 
+
+#Now go to https://spatialreference.org/ref/epsg/wgs-84/ 
+#This link will allow you to search for your CRS, once you have found it you can select proj4 in the blue box which should bring you to a page that shows the proj4 string. Copy paste this inside the quotes in the following function.
+
+
+boundary_map <- sf::read_sf("COPR_Boundary_2010") %>% 
+  sf::st_transform('+proj=longlat +ellps=GRS80 +datum=NAD83 +no_defs')
+
+#Here we are transforming the CRS of the shapefile to match that of the occurrence data. It will give the same results and the same expected error if the transformation is reversible. 
+```
+
+### Here we're going to break up the data once again. 
+```{r}
+#bounding the data
+specimen_bounded <- specimen_data_w_crs[boundary_map,] 
+
+#Breaking up the geometry column into decimalLatitude and decimalLongitude
+specimen_bounded_sep <- specimen_bounded %>%
+  dplyr::mutate(decimalLatitude = sf::st_coordinates(.)[,2],
+                decimalLongitude = sf::st_coordinates(.)[,1])
+
+```
+### Optional taxa filtering
+```{r}
+specimen_bounded_taxa <- taxa_filter(data = specimen_bounded_sep, kingdom = NULL, phylum = NULL, class = "Insecta", order = "Hymenoptera", family = "Apidae", genus = NULL, specificEpithet = NULL)
+#Replace the NULL with whatever your filtering to. 
+```
+
+
+### Making a leaflet map
+```{r}
+map <- leaflet() %>% addTiles() %>% 
+  addPolygons(data = boundary_map, group = "Boundary Map") %>% 
+  addCircleMarkers(data = specimen_bounded_taxa, lat = ~decimalLatitude, lng = ~decimalLongitude, group = "Occurrence Data") %>% 
+  #layer control: this allows the user to toggle the layers on and off
+  addLayersControl(
+    #baseGroups = "Occurrence Data", 
+    overlayGroups = c("Boundary Map", "Occurrence Data"),
+    options = layersControlOptions(collapsed = TRUE) 
+  )
+
+map
+
+```
+
+
+
+
