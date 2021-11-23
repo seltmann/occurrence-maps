@@ -233,8 +233,11 @@ occurence_order_subset_sep_unique <- occurence_order_subset_sep %>%
   dplyr::group_by(lat, lon) %>% #Designate unique lat lon
   dplyr::mutate(count = n()) #Create a new column with the counts
 
-
-
+occurrence_order_test <- occurence_order_subset_sep %>% 
+  group_by(lat, lon) %>% 
+  summarise(n = n()) %>% 
+  arrange(desc(n))
+occurrence_order_test #Same output as before, just a double check I found online
 
 occurence_order_subset_sep_unique %>% 
   group_by(lat, lon, order) %>% 
