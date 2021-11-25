@@ -16,17 +16,29 @@ ui <- fluidPage(
   titlePanel("Map for exploring"),
   
   sidebarLayout( ## add second for picking data
-    sidebarPanel(pickerInput('taxa', label = 'Select a Taxonomic Order', ## Creating the menu
+    sidebarPanel(pickerInput('order.subset', label = 'Select a Taxonomic Order', ## Creating the menu
                              choices = unique(specimen_data_w_crs$order), ## Specifying possible choices
                              selected = 'Hymenoptera',multiple = T,options = list(`actions-box` = TRUE)), ## adding more menu options
                  
                  conditionalPanel(
                    condition = "data.subset2",
-                   pickerInput('family.subset', label = "Choose Taxonomic Family",
+                   pickerInput('family.subset', label = "Select a Taxonomic Family",
                                choices = unique(specimen_data_w_crs$family),
+                               multiple = T,options = list(`actions-box` = TRUE)),),
+                 conditionalPanel(
+                   condition = "data.subset2",
+                   pickerInput('genus.subset', label = "Select a Taxonomic Genus",
+                               choices = unique(specimen_data_w_crs$genus),
+                               multiple = T,options = list(`actions-box` = TRUE)),),
+                 conditionalPanel(
+                   condition = "data.subset2",
+                   pickerInput('species.subset', label = "Select a Taxonomic Species Epithet",
+                               choices = unique(specimen_data_w_crs$specificEpithet),
                                multiple = T,options = list(`actions-box` = TRUE)),
-        
-                 ),
+                   
+                   
+                 )
+                 
     ),
     mainPanel(leafletOutput("map")) ## Basic map for user to explore
   ) # Close sidebarLayout
@@ -37,12 +49,23 @@ server <- function(input, output) {
   
   ### Make reactive data by ID (from selection in sidebar)
   pres.dat.sel <- reactive({ ## open reactive expression
-    data.subset <- specimen_data_w_crs[specimen_data_w_crs$order == input$taxa, ]  #filters by data source
+    if(!is.null(input$order.subset)){
+    data.subset <- specimen_data_w_crs[specimen_data_w_crs$order %in% input$order.subset, ]
+    }
+    if(!is.null(input$family.subset)){
+    data.subset <- specimen_data_w_crs[specimen_data_w_crs$family %in% input$family.subset,]
+    }
+    if(!is.null(input$genus.subset)){
+      data.subset <- specimen_data_w_crs[specimen_data_w_crs$genus %in% input$genus.subset,]
+    }
+    if(!is.null(input$species.subset)){
+      data.subset <- specimen_data_w_crs[specimen_data_w_crs$specificEpithet %in% input$species.subset,]
+    }
     return(data.subset)
   })
-
   
- 
+  
+  
   
   output$map <- renderLeaflet({ ## begin rendering leaflet and store as 'map' in server output
     leaflet() %>% addProviderTiles(providers$Esri.NatGeoWorldMap)  %>% ## Add basemap
