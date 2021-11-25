@@ -8,58 +8,54 @@ library(shinyWidgets)
 library(sf)
 
 specimen_data <- read.delim(file="occurrence.txt",header=TRUE)
-specimen_data_w_crs <- st_as_sf(specimen_data, coords = c('decimalLongitude', 'decimalLatitude'), crs = 4326)
+specimen_df <- st_as_sf(specimen_data, coords = c('decimalLongitude', 'decimalLatitude'), crs = 4326)
 
 ui <- fluidPage(
   
-  # Application title
-  titlePanel("Map for exploring"),
+  #Application Title
+  titlePanel("Organismal Occurrence Data Explorer"),
   
-  sidebarLayout( ## add second for picking data
-    sidebarPanel(pickerInput('order.subset', label = 'Select a Taxonomic Order', ## Creating the menu
-                             choices = unique(specimen_data_w_crs$order), ## Specifying possible choices
-                             selected = 'Hymenoptera',multiple = T,options = list(`actions-box` = TRUE)), ## adding more menu options
+  sidebarLayout(
+    sidebarPanel(pickerInput('order.subset', label = 'Select Taxonomic Order',
+                             choices = unique(specimen_df$order),
+                             selected = 'Hymenoptera', multiple = T, options = list(`action-box` = TRUE)
+                             ), #Close pickerInput1
+                 pickerInput('family.subset', label = 'Select Taxonomic Family',
+                             choices = unique(specimen_df$family),
+                             multiple = T, options = list(`action-box` = TRUE)
+                 ), #Close pickerInput2
+                 pickerInput('genus.subset', label = 'Select Taxonomic Genus',
+                             choices = unique(specimen_df$genus),
+                             multiple = T, options = list(`action-box` = TRUE)
+                 ), #Close pickerInput3
+                 pickerInput('species.subset', label = 'Select Taxonomic Species',
+                             choices = unique(specimen_df$specificEpithet),
+                             multiple = T, options = list(`action-box` = TRUE)
+                 ), #Close pickerInput4
                  
-                 conditionalPanel(
-                   condition = "data.subset2",
-                   pickerInput('family.subset', label = "Select a Taxonomic Family",
-                               choices = unique(specimen_data_w_crs$family),
-                               multiple = T,options = list(`actions-box` = TRUE)),),
-                 conditionalPanel(
-                   condition = "data.subset2",
-                   pickerInput('genus.subset', label = "Select a Taxonomic Genus",
-                               choices = unique(specimen_data_w_crs$genus),
-                               multiple = T,options = list(`actions-box` = TRUE)),),
-                 conditionalPanel(
-                   condition = "data.subset2",
-                   pickerInput('species.subset', label = "Select a Taxonomic Species Epithet",
-                               choices = unique(specimen_data_w_crs$specificEpithet),
-                               multiple = T,options = list(`actions-box` = TRUE)),
-                   
-                   
-                 )
-                 
-    ),
-    mainPanel(leafletOutput("map")) ## Basic map for user to explore
-  ) # Close sidebarLayout
-) ## close ui
+                 ), #Close sidebarPanel
+   
+     mainPanel(leafletOutput("map"))
+    
+  ) #Close sidebarLayout
 
+) #Close fluidPage
 
 server <- function(input, output) {
   
   ### Make reactive data by ID (from selection in sidebar)
   pres.dat.sel <- reactive({ ## open reactive expression
     if(!is.null(input$order.subset)){
-    data.subset <- specimen_data_w_crs[specimen_data_w_crs$order %in% input$order.subset, ]
+      data.subset <- specimen_df[specimen_df$order %in% input$order.subset, ]
     }
     if(!is.null(input$family.subset)){
-    data.subset <- specimen_data_w_crs[specimen_data_w_crs$family %in% input$family.subset,]
+      data.subset <- specimen_df[specimen_df$family %in% input$family.subset,]
     }
     if(!is.null(input$genus.subset)){
-      data.subset <- specimen_data_w_crs[specimen_data_w_crs$genus %in% input$genus.subset,]
+      data.subset <- specimen_df[specimen_df$genus %in% input$genus.subset,]
     }
     if(!is.null(input$species.subset)){
-      data.subset <- specimen_data_w_crs[specimen_data_w_crs$specificEpithet %in% input$species.subset,]
+      data.subset <- specimen_df[specimen_df$specificEpithet %in% input$species.subset,]
     }
     return(data.subset)
   })
@@ -73,14 +69,6 @@ server <- function(input, output) {
       addScaleBar()
   }) ## close map
   
-  observe({ ## Observe buffer creation and add it to map
-    req(input$create_buffer)  # to prevent error when no buffer has been created
-    req(nrow(pres.dat.sel())>0) # to prevent error when no presence data
-    leafletProxy("map") %>%  ## Proxy to send commands to a map that is already rendered
-      clearShapes() %>% ## Clear any previous buffer lines before adding new
-      addPolylines(data =pres.dat.buffer(), col='teal' ) ## Add the buffer lines to map
-  })
-  
-} ## close server
+} #close server
 
 shinyApp(ui = ui, server = server) ## Run the app locally
