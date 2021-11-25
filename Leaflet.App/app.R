@@ -18,12 +18,16 @@ ui <- fluidPage(
   sidebarLayout( ## add second for picking data
     sidebarPanel(pickerInput('taxa', label = 'Select a Taxonomic Order', ## Creating the menu
                              choices = unique(specimen_data_w_crs$order), ## Specifying possible choices
-                             selected = 'Hymenoptera',multiple = T,options = list(`actions-box` = TRUE))), ## adding more menu options
+                             selected = 'Hymenoptera',multiple = T,options = list(`actions-box` = TRUE)), ## adding more menu options
                  
-                 #sliderInput("buff_distance", "Buffer distance", ## Add slider input and action button in step 3
-                             #min = 0, max = 10000, value = 400), ## Set min, max, and default values
-                 #actionButton("create_buffer", "Create buffer")), ## Add an action button for creating buffer
-    
+                 conditionalPanel(
+                   condition = "data.subset2",
+                   pickerInput('family.subset', label = "Choose Taxonomic Family",
+                               choices = unique(specimen_data_w_crs$family),
+                               multiple = T,options = list(`actions-box` = TRUE)),
+        
+                 ),
+    ),
     mainPanel(leafletOutput("map")) ## Basic map for user to explore
   ) # Close sidebarLayout
 ) ## close ui
@@ -36,18 +40,14 @@ server <- function(input, output) {
     data.subset <- specimen_data_w_crs[specimen_data_w_crs$order == input$taxa, ]  #filters by data source
     return(data.subset)
   })
+
   
-  pres.dat.buffer <- eventReactive(list(pres.dat.sel(), input$create_buffer), { ## New reactive expression to execute buffer around points
-    pres.buff <- raster::buffer(pres.dat.sel(), input$buff_distance) ## The buffer function acting on user inputs
-    return(pres.buff) ## Return the buffer (spatial polygons) object
-  })
+ 
   
   output$map <- renderLeaflet({ ## begin rendering leaflet and store as 'map' in server output
     leaflet() %>% addProviderTiles(providers$Esri.NatGeoWorldMap)  %>% ## Add basemap
       addCircleMarkers(data = pres.dat.sel(), color = ~order) %>% ## add circle markers with color
-      addScaleBar() %>%  #add dynamic scale bar
-      addLegend(colors = c("Green","Blue"), labels = c("Camera","Scat"), ## Add manual legend
-                title = "Data Source") ## Title it
+      addScaleBar()
   }) ## close map
   
   observe({ ## Observe buffer creation and add it to map
