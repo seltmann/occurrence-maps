@@ -52,10 +52,6 @@ ui <- fluidPage(
 
 server <- function(input, output) {
   
-  data <- reactive({
-    req(input$filedata)
-    read.csv(input$filedata$datapath)
-  })
   
   map <- reactive({
     req(input$filemap)
@@ -113,13 +109,23 @@ server <- function(input, output) {
     return(data.subset)
   })
   
+filtered_data <- reactive({
+  data <- pres.dat.sel()
+  map <- map()
   
+  filtered_data <- data[map, ]
+})
+
   
   
   output$map <- renderLeaflet({ ## begin rendering leaflet and store as 'map' in server output
+    if (is.null(map())) {
+      return(NULL)
+    }
+   
+    
     leaflet() %>% addProviderTiles(providers$Esri.NatGeoWorldMap)  %>%
-      addPolygons(data = map()) %>% 
-      addCircleMarkers(data = pres.dat.sel(), color = ~order) %>% ## add circle markers with color
+      addCircleMarkers(data = filtered_data(), color = ~order) %>% ## add circle markers with color
       addScaleBar()
   }) ## close map
   
