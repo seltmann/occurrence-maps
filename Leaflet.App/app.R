@@ -125,6 +125,7 @@ filtered_data <- reactive({
    
     
     leaflet() %>% addProviderTiles(providers$Esri.NatGeoWorldMap)  %>%
+      addPolygons(data = map()) %>% 
       addCircleMarkers(data = filtered_data(), color = ~order) %>% ## add circle markers with color
       addScaleBar()
   }) ## close map
