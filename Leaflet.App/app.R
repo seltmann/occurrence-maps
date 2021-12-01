@@ -119,16 +119,27 @@ filtered_data <- reactive({
   
   
   output$map <- renderLeaflet({ ## begin rendering leaflet and store as 'map' in server output
-    if (is.null(map())) {
-      return(NULL)
+    
+    if (is.null(input$filemap)) {
+      return(leaflet() %>% addProviderTiles(providers$Esri.NatGeoWorldMap)  %>% ## Add basemap
+               addCircleMarkers(data = pres.dat.sel(), color = ~order) %>% ## add circle markers with color
+               addScaleBar()
+        
+      )
+    }  else {
+      return(
+        leaflet() %>% addProviderTiles(providers$Esri.NatGeoWorldMap)  %>%
+          addPolygons(data = map()) %>% 
+          addCircleMarkers(data = filtered_data(), color = ~order) %>% ## add circle markers with color
+          addScaleBar()
+      )
     }
    
     
-    leaflet() %>% addProviderTiles(providers$Esri.NatGeoWorldMap)  %>%
-      addPolygons(data = map()) %>% 
-      addCircleMarkers(data = filtered_data(), color = ~order) %>% ## add circle markers with color
-      addScaleBar()
+    
   }) ## close map
+  
+  
   
 } #close server
 
