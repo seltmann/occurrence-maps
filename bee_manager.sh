@@ -11,4 +11,4 @@
 #1)Upload data from GBIF and call it usa_bees.txt, the cut command then brings in columns 133,134 which are decimal latitude and longitude. 191-198 include taxonomic rank. 
 
 echo cut important columns
-cat usa_bees.txt |cut -f 1,2,3,4,5,6,7,8,9,10 > bee_occurrence.txt
+cat occurrence.txt |cut -f 133,134,191,192,193,194,195,196,197,198 > bee_occurrence2.txt
