@@ -17,15 +17,44 @@ library(leaflet)
 library(rgdal)
 ```
 
+
+### Bringing in the occurrence data from GBIF, all bees for the USA DOI https://doi.org/10.15468/dl.4qr9s2
+```{r}
+specimen_data <- read.delim(file="filter_polygon/bee_occurrences_usa.txt",header=TRUE)
+
+specimen_data <- subset(specimen_data, !is.na(order) & !is.na(decimalLongitude) & !is.na(decimalLatitude))
+```
+
+
 ### Mapping out California Level 3
 ```{r}
 eco_map <- sf::read_sf("filter_polygon/cali_ecoregions_3/ca_eco_l3.shp") %>% 
   sf::st_transform('+proj=longlat +datum=WGS84')
 
+leaflet() %>% addTiles() %>% 
+  addPolygons(data = eco_map) 
+  #addCircleMarkers(data = specimen_data, lat = ~decimalLatitude, lng = ~decimalLongitude)
+```
+
+
+### Bounding specimen data and mapping
+```{r}
+specimen_data_w_crs <- st_as_sf(specimen_data, coords = c('decimalLongitude', 'decimalLatitude'), crs = 4326)
+
+specimen_bounded <- specimen_data_w_crs[eco_map,]
+
+specimen_bounded_sep <- specimen_bounded %>%
+  dplyr::mutate(decimalLatitude = sf::st_coordinates(.)[,2],
+                decimalLongitude = sf::st_coordinates(.)[,1])
 
 leaflet() %>% addTiles() %>% 
-  addPolygons(data = eco_map)
+  #addPolygons(data = eco_map) +
+  addCircleMarkers(data = specimen_bounded_sep, lat = ~decimalLatitude, lng = ~decimalLongitude)
+
 ```
+ 
+
+
 
 ### Mapping out California Level 4
 ```{r}
