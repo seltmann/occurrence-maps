@@ -1,0 +1,41 @@
+---
+title: "eco_maps"
+author: "JT Miller"
+date: "1/11/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Eco data mapping
+## The purpose of this script is to analyze bee occurrence data based upon california's enviromental map found here: https://www.epa.gov/eco-research/ecoregion-download-files-state-region-9 
+```{r}
+library(sf)
+library(leaflet)
+library(rgdal)
+```
+
+### Mapping out California Level 3
+```{r}
+eco_map <- sf::read_sf("filter_polygon/cali_ecoregions_3/ca_eco_l3.shp") %>% 
+  sf::st_transform('+proj=longlat +datum=WGS84')
+
+
+leaflet() %>% addTiles() %>% 
+  addPolygons(data = eco_map)
+```
+
+### Mapping out California Level 4
+```{r}
+eco_map4 <- sf::read_sf("filter_polygon/cali_ecoregions_4/ca_eco_l4.shp") %>% 
+  sf::st_transform('+proj=longlat +datum=WGS84')
+
+
+leaflet() %>% addTiles() %>% 
+  addPolygons(data = eco_map4)
+
+#ahahahah we will not be using this in the initial analysis...
+```
+
