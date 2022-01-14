@@ -15,6 +15,8 @@ knitr::opts_chunk$set(echo = TRUE)
 library(sf)
 library(leaflet)
 library(rgdal)
+library(leafgl)
+
 ```
 
 
@@ -52,7 +54,23 @@ leaflet() %>% addTiles() %>%
   addCircleMarkers(data = specimen_bounded_sep, lat = ~decimalLatitude, lng = ~decimalLongitude)
 
 ```
- 
+
+```{r}
+#Error: Can only handle POLYGONs, please cast your MULTIPOLYGON to POLYGON using sf::st_cast
+
+eco_map_polygon <- sf::st_cast(eco_map, "POLYGON")
+
+#convert sf to sp for use with other functions
+eco_map_polygon_sp<-as(eco_map_polygon, "Spatial")
+#convert sp to sf for use with this function 
+eco_map_polygon_sp<-as(eco_map_polygon_sp, "sf")
+
+options(viewer = NULL)
+leaflet() %>%
+  addGlPolygons(data = eco_map_polygon) %>%
+  addGlPoints(data = specimen_bounded_sep, group = "pts") #Unfortunately this doesnt include the ecoregions as desired since changing from a multipolygon to a polygon type deletes the internal bounds. 
+```
+
 
 
 
