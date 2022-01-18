@@ -16,6 +16,8 @@ library(sf)
 library(leaflet)
 library(rgdal)
 library(leafgl)
+#library(sp)
+library(tidyverse)
 
 ```
 
@@ -32,6 +34,8 @@ specimen_data <- subset(specimen_data, !is.na(order) & !is.na(decimalLongitude) 
 ```{r}
 eco_map <- sf::read_sf("filter_polygon/cali_ecoregions_3/ca_eco_l3.shp") %>% 
   sf::st_transform('+proj=longlat +datum=WGS84')
+
+
 
 leaflet() %>% addTiles() %>% 
   addPolygons(data = eco_map) 
@@ -55,6 +59,25 @@ leaflet() %>% addTiles() %>%
 
 ```
 
+### Mapping with ggplot
+```{r}
+
+ggplot() +
+  geom_sf(data = eco_map, fill = "palegreen", color = "black") +
+  ggtitle("Ecomap") +
+  theme_bw() 
+
+ggplot() +
+  geom_sf(data = eco_map, fill = "palegreen", color = "black") +
+  geom_sf(specimen_bounded_sep, mapping = aes(geometry = geometry), size = 1) +
+  ggtitle("Bees in California with EcoMap") +
+  theme_bw() 
+```
+
+
+
+
+
 ```{r}
 #Error: Can only handle POLYGONs, please cast your MULTIPOLYGON to POLYGON using sf::st_cast
 
@@ -70,8 +93,479 @@ leaflet() %>%
   addGlPolygons(data = eco_map_polygon) %>%
   addGlPoints(data = specimen_bounded_sep, group = "pts") #Unfortunately this doesnt include the ecoregions as desired since changing from a multipolygon to a polygon type deletes the internal bounds. 
 ```
+### Parsing out the EcoRegions 
+```{r}
+
+region_1 <- eco_map[1,]
 
 
+specimen_region1 <- specimen_bounded_sep[region_1,]
+
+region_1_polygon <- sf::st_cast(region_1, "POLYGON")
+
+#convert sf to sp for use with other functions
+region_1_polygon_sp <-as(region_1_polygon, "Spatial")
+#convert sp to sf for use with this function 
+region_1_polygon_sp <-as(region_1_polygon_sp, "sf")
+
+
+options(viewer = TRUE)
+leaflet() %>%
+  addGlPolygons(data = region_1_polygon_sp) %>%
+  addGlPoints(data = specimen_region1, group = "pts")
+```
+### Making the parse function 
+```{r}
+# A function designed to parse through a multipolygon object by row and return just a single row in Polygon form to work with the addGlPolygons. 
+
+parse_shp <- function(shp, row = NULL, cast = NULL) {
+  if(!is.null(row)) {
+    shp <- shp[row,]
+  }
+  if(is.null(cast)){
+    shp <- sf::st_cast(shp, "POLYGON")
+    shp <-as(shp, "Spatial")
+    shp <-as(shp, "sf")
+  }
+
+  return(shp)
+  
+}
+
+
+```
+
+### Using the parse_shp function to create variables for each of the polygons (LEVEL 2)
+```{r}
+Marine_Forest1 <- parse_shp(eco_map, row = 1)
+Cold_Desert1 <- parse_shp(eco_map, row = 2)
+Warm_Desert1 <- parse_shp(eco_map, row = 3)
+Western_Cordillera1 <- parse_shp(eco_map, row = 4)
+Western_Cordillera2 <- parse_shp(eco_map, row = 5)
+Mediterranean1 <- parse_shp(eco_map, row = 6)
+Mediterranean2 <- parse_shp(eco_map, row = 7)
+Western_Cordillera3 <- parse_shp(eco_map, row = 8)
+Mediterranean3 <- parse_shp(eco_map, row = 9)
+Cold_Desert2 <- parse_shp(eco_map, row = 10)
+Warm_Desert2 <- parse_shp(eco_map, row = 11)
+Mediterranean4 <- parse_shp(eco_map, row = 12)
+Western_Cordillera4 <- parse_shp(eco_map, row = 13)
+```
+
+### Now lets graph each of our newly seperated regions with the data. (LEVEL 2)
+```{r}
+#### Marine Forest
+specimen_Marine_Forest1 <- specimen_bounded_sep[Marine_Forest1,]
+
+options(viewer = TRUE)
+leaflet() %>%
+  addGlPolygons(data = Marine_Forest1) %>%
+  addGlPoints(data = specimen_Marine_Forest1, group = "pts")
+
+### Cold Deserts
+specimen_Cold_Desert1 <- specimen_bounded_sep[Cold_Desert1,]
+
+options(viewer = TRUE)
+leaflet() %>%
+  addGlPolygons(data = Cold_Desert1) %>%
+  addGlPoints(data = specimen_Cold_Desert1, group = "pts")
+
+specimen_Cold_Desert2 <- specimen_bounded_sep[Cold_Desert2,]
+
+options(viewer = TRUE)
+leaflet() %>%
+  addGlPolygons(data = Cold_Desert2) %>%
+  addGlPoints(data = specimen_Cold_Desert2, group = "pts")
+
+### Warm Deserts
+specimen_Warm_Desert1 <- specimen_bounded_sep[Warm_Desert1,]
+
+options(viewer = TRUE)
+leaflet() %>%
+  addGlPolygons(data = Warm_Desert1) %>%
+  addGlPoints(data = specimen_Warm_Desert1, group = "pts")
+
+specimen_Warm_Desert2 <- specimen_bounded_sep[Warm_Desert2,]
+
+options(viewer = TRUE)
+leaflet() %>%
+  addGlPolygons(data = Warm_Desert2) %>%
+  addGlPoints(data = specimen_Warm_Desert2, group = "pts")
+
+### Western Cordilleras
+specimen_Western_Cordillera1 <- specimen_bounded_sep[Western_Cordillera1,]
+
+options(viewer = TRUE)
+leaflet() %>%
+  addGlPolygons(data = Western_Cordillera1) %>%
+  addGlPoints(data = specimen_Western_Cordillera1, group = "pts")
+
+specimen_Western_Cordillera2 <- specimen_bounded_sep[Western_Cordillera2,]
+
+options(viewer = TRUE)
+leaflet() %>%
+  addGlPolygons(data = Western_Cordillera2) %>%
+  addGlPoints(data = specimen_Western_Cordillera2, group = "pts")
+
+specimen_Western_Cordillera3 <- specimen_bounded_sep[Western_Cordillera3,]
+
+options(viewer = TRUE)
+leaflet() %>%
+  addGlPolygons(data = Western_Cordillera3) %>%
+  addGlPoints(data = specimen_Western_Cordillera3, group = "pts")
+
+specimen_Western_Cordillera4 <- specimen_bounded_sep[Western_Cordillera4,]
+
+options(viewer = TRUE)
+leaflet() %>%
+  addGlPolygons(data = Western_Cordillera4) %>%
+  addGlPoints(data = specimen_Western_Cordillera4, group = "pts")
+
+### Mediterranean 
+specimen_Mediterranean1 <- specimen_bounded_sep[Mediterranean1,]
+
+options(viewer = TRUE)
+leaflet() %>%
+  addGlPolygons(data = Mediterranean1) %>%
+  addGlPoints(data = specimen_Mediterranean1, group = "pts")
+
+specimen_Mediterranean2 <- specimen_bounded_sep[Mediterranean2,]
+
+options(viewer = TRUE)
+leaflet() %>%
+  addGlPolygons(data = Mediterranean2) %>%
+  addGlPoints(data = specimen_Mediterranean2, group = "pts")
+
+specimen_Mediterranean3 <- specimen_bounded_sep[Mediterranean3,]
+
+options(viewer = TRUE)
+leaflet() %>%
+  addGlPolygons(data = Mediterranean3) %>%
+  addGlPoints(data = specimen_Mediterranean3, group = "pts")
+
+specimen_Mediterranean4 <- specimen_bounded_sep[Mediterranean4,]
+
+options(viewer = TRUE)
+leaflet() %>%
+  addGlPolygons(data = Mediterranean4) %>%
+  addGlPoints(data = specimen_Mediterranean4, group = "pts")
+
+
+
+```
+
+### Sanity Check using ggploting
+```{r}
+Marine_Forests_multiPoly <- eco_map[1,]
+
+Marine_Forests_Specimen_multiPoly <- specimen_bounded_sep[Marine_Forests_multiPoly,]
+
+ggplot() +
+  geom_sf(data = Marine_Forests_multiPoly, fill = "blue", color = "black") +
+  geom_sf(Marine_Forests_Specimen_multiPoly, mapping = aes(geometry = geometry), size = 1) +
+  ggtitle("Marine Forest Bee Occurrences in California") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        plot.title = element_text( hjust = 0.5))
+
+### This method gives the same results as the Polygon method in the leaflet package. Check. 
+```
+### Creating ggplot regions to map multiple groups since it would look good for a visual output (LEVEL 2)
+```{r}
+marine_forest_shp <- eco_map[1,]
+cold_desert1_shp <- eco_map[2,]
+warm_desert1_shp <- eco_map[3,]
+western_cord1_shp <- eco_map[4,]
+western_cord2_shp <- eco_map[5,]
+Medi1_shp <- eco_map[6,]
+Medi2_shp <- eco_map[7,]
+western_cord3_shp <- eco_map[8,]
+Medi3_shp <- eco_map[9,]
+cold_desert2_shp <- eco_map[10,]
+warm_desert2_shp <- eco_map[11,]
+Medi4_shp <- eco_map[12,]
+western_cord4_shp <- eco_map[13,]
+```
+
+
+
+
+
+
+
+### Unique Species per EcoRegion (LEVEL 2)
+```{r}
+specimen_Marine_Forest_united <- specimen_Marine_Forest1 %>% 
+  unite(scientific_name, genus, specificEpithet, sep = "-")
+
+Marine_Forest_SPR <- specimen_Marine_Forest_united %>% 
+  dplyr::distinct(scientific_name, .keep_all = TRUE) 
+
+Marine_Forest_SPR
+
+
+############### Function that does creates a Unique Species Per Ecoregion ######################################
+Species_Richness_Ecoregion <- function(data, unite = NULL, distinct = NULL) {
+  if(is.null(unite)) {
+    data <- data %>%  unite(scientific_name, genus, specificEpithet, sep = "-")
+  }
+  if(is.null(distinct)){
+    data <- data %>% distinct(scientific_name, .keep_all = TRUE)
+  }
+
+  return(data)
+  
+}
+
+test1 <- Species_Richness_Ecoregion(specimen_Marine_Forest1) #Function works 
+
+##################### By EcoRegion ##########################################
+
+### Cold Deserts
+
+#### If we want the combined species richness of the regions defined as cold deserts, first we must rbind() the two specimen datasets of that region together, and then apply the Species_Richness_Ecoregion().
+
+specimen_Cold_Deserts <- rbind(specimen_Cold_Desert1, specimen_Cold_Desert2)
+
+Cold_Deserts_SPR <- Species_Richness_Ecoregion(specimen_Cold_Deserts)
+
+### Warm Deserts
+
+specimen_Warm_Deserts <- rbind(specimen_Warm_Desert1, specimen_Warm_Desert2)
+
+Warm_Deserts_SPR <- Species_Richness_Ecoregion(specimen_Warm_Deserts)
+
+### Mediterranean Environments  
+
+specimen_Mediterraneans <- rbind(specimen_Mediterranean1, specimen_Mediterranean2, specimen_Mediterranean3, specimen_Mediterranean4)
+
+Mediterranean_SPR <- Species_Richness_Ecoregion(specimen_Mediterraneans)
+
+### Western Cordilleras
+
+specimen_Western_Cordilleras <- rbind(specimen_Western_Cordillera1, specimen_Western_Cordillera2, specimen_Western_Cordillera3, specimen_Western_Cordillera4)
+
+Western_Cordilleras_SPR <- Species_Richness_Ecoregion(specimen_Western_Cordilleras)
+
+```
+
+### Showing the ggplots for each grouping
+```{r}
+ggplot() +
+  geom_sf(data = eco_map, fill = "palegreen", color = "black") +
+  ggtitle("Ecoregions for California at Level 2") + 
+  theme_bw()
+
+ggplot() +
+  geom_sf(data = cold_desert1_shp , fill = "palegreen", color = "black") +
+  geom_sf(data = cold_desert2_shp , fill = "palegreen", color = "black") +
+  geom_sf(specimen_Cold_Deserts, mapping = aes(geometry = geometry), size = 1) +
+  ggtitle("Bees in California's Cold Deserts") +
+  theme_bw() 
+
+ggplot() +
+  geom_sf(data = marine_forest_shp , fill = "palegreen", color = "black") +
+  geom_sf(specimen_Marine_Forest_united, mapping = aes(geometry = geometry), size = 1) +
+  ggtitle("Bees in California's Marine Forests") +
+  theme_bw() 
+
+ggplot() +
+  geom_sf(data = Medi1_shp , fill = "palegreen", color = "black") +
+  geom_sf(data = Medi2_shp , fill = "palegreen", color = "black") +
+  geom_sf(data = Medi3_shp , fill = "palegreen", color = "black") +
+  geom_sf(data = Medi4_shp , fill = "palegreen", color = "black") +
+  geom_sf(specimen_Mediterraneans, mapping = aes(geometry = geometry), size = 1) +
+  ggtitle("Bees in California's Mediterranean") +
+  theme_bw() 
+
+ggplot() +
+  geom_sf(data = warm_desert1_shp , fill = "palegreen", color = "black") +
+  geom_sf(data = warm_desert2_shp , fill = "palegreen", color = "black") +
+  geom_sf(specimen_Warm_Deserts, mapping = aes(geometry = geometry), size = 1) +
+  ggtitle("Bees in California's Warm Deserts") +
+  theme_bw() 
+
+ggplot() +
+  geom_sf(data = western_cord1_shp , fill = "palegreen", color = "black") +
+  geom_sf(data = western_cord2_shp , fill = "palegreen", color = "black") +
+  geom_sf(data = western_cord3_shp , fill = "palegreen", color = "black") +
+  geom_sf(data = western_cord4_shp , fill = "palegreen", color = "black") +
+  geom_sf(specimen_Western_Cordilleras, mapping = aes(geometry = geometry), size = 1) +
+  ggtitle("Bees in California's Western Cordilleras") +
+  theme_bw() 
+
+```
+
+
+### Making a data frame with just number of Unique Species by Ecoregion (LEVEL 2)
+```{r}
+eco_region_names <- c("Warm Deserts", "Cold Deserts", "Marine Forests", "Mediterranean", "Western Cordilleras")
+
+Species_Richness <- c(1035, 599, 392, 1356, 896)
+
+eco_SPR <- data.frame(eco_region_names, Species_Richness)
+```
+
+```{r}
+ggplot(data = eco_SPR, aes(x = eco_region_names, y = Species_Richness)) +
+  geom_col() +
+  xlab("EcoRegion") +
+  ylab("Species Richness (# of Unique Species)") +
+  ggtitle("Species Richness For EcoRegions Level 2") +
+  theme_bw()
+```
+### Level 3 EcoRegions 
+```{r}
+#Seperating out the shapefile by ecoregions lvl 3
+Coast_Range <- eco_map[1,]
+Central_Basin_and_Range <- eco_map[2,]
+Mojave_Basin_and_Range <- eco_map[3,]
+Cascades <- eco_map[4,]
+Sierra_Nevadas <- eco_map[5,]
+Cali_Coastal_Sage_Chap_Oak_Woodlands1 <- eco_map[6,]
+Central_Cali_Valley <- eco_map[7,]
+Klamath_Mountains <- eco_map[8,]
+Southern_and_Baja_Cali_PineOak_Mounts <- eco_map[9,]
+Northern_Basin_and_Range <- eco_map[10,]
+Sonoran_Desert <- eco_map[11,]
+Cali_Coastal_Sage_Chap_Oak_Woodlands2 <- eco_map[12,]
+Eastern_Cascades_Slopes_and_Foothills <- eco_map[13,]
+
+# Subsetting bees by ecoregion
+
+Coast_Range_Bees <- specimen_bounded_sep[Coast_Range,]
+Central_Basin_and_Range_Bees <- specimen_bounded_sep[Central_Basin_and_Range,]
+Mojave_Basin_and_Range_Bees <- specimen_bounded_sep[Mojave_Basin_and_Range,]
+Cascades_Bees <- specimen_bounded_sep[Cascades,]
+Sierra_Nevadas_Bees <- specimen_bounded_sep[Sierra_Nevadas,]
+Cali_Coastal_Sage_Chap_Oak_Woodlands1_Bees <- specimen_bounded_sep[Cali_Coastal_Sage_Chap_Oak_Woodlands1,]
+Central_Cali_Valley_Bees <- specimen_bounded_sep[Central_Cali_Valley,]
+Klamath_Mountains_Bees <- specimen_bounded_sep[Klamath_Mountains,]
+Southern_and_Baja_Cali_PineOak_Mounts_Bees <- specimen_bounded_sep[Southern_and_Baja_Cali_PineOak_Mounts,]
+Northern_Basin_and_Range_Bees <- specimen_bounded_sep[Northern_Basin_and_Range,]
+Sonoran_Desert_Bees <- specimen_bounded_sep[Sonoran_Desert,]
+Cali_Coastal_Sage_Chap_Oak_Woodlands2_Bees <- specimen_bounded_sep[Cali_Coastal_Sage_Chap_Oak_Woodlands2,]
+Eastern_Cascades_Slopes_and_Foothills_Bees <- specimen_bounded_sep[Eastern_Cascades_Slopes_and_Foothills,]
+
+#combining the Sage Chap Woodland regions since they are the same (?)
+Cali_Coastal_Sage_Chap_Oak_Woodlands_Bees <- rbind(Cali_Coastal_Sage_Chap_Oak_Woodlands1_Bees, Cali_Coastal_Sage_Chap_Oak_Woodlands2_Bees)
+
+#Finding Species Richness for each EcoRegion
+Coast_Range_Bees_SpR <- Species_Richness_Ecoregion(Coast_Range_Bees)
+Central_Basin_and_Range_Bees_SpR <- Species_Richness_Ecoregion(Central_Basin_and_Range_Bees)
+Mojave_Basin_and_Range_Bees_SpR <- Species_Richness_Ecoregion(Mojave_Basin_and_Range_Bees)
+Cascades_Bees_SpR <- Species_Richness_Ecoregion(Cascades_Bees)
+Sierra_Nevadas_Bees_SpR <- Species_Richness_Ecoregion(Sierra_Nevadas_Bees)
+Cali_Coastal_Sage_Chap_Oak_Woodlands_Bees_SpR <- Species_Richness_Ecoregion(Cali_Coastal_Sage_Chap_Oak_Woodlands_Bees)
+Central_Cali_Valley_Bees_SpR <- Species_Richness_Ecoregion(Central_Cali_Valley_Bees)
+Klamath_Mountains_Bees_SpR <- Species_Richness_Ecoregion(Klamath_Mountains_Bees)
+Southern_and_Baja_Cali_PineOak_Mounts_BeesSpR <- Species_Richness_Ecoregion(Southern_and_Baja_Cali_PineOak_Mounts_Bees)
+Northern_Basin_and_Range_Bees_SpR <- Species_Richness_Ecoregion(Northern_Basin_and_Range_Bees)
+Sonoran_Desert_Bees_SpR <- Species_Richness_Ecoregion(Sonoran_Desert_Bees)
+Eastern_Cascades_Slopes_and_Foothills_Bees_SpR <- Species_Richness_Ecoregion(Eastern_Cascades_Slopes_and_Foothills_Bees)
+```
+
+
+### Create a dataframe for species Richness analysis
+```{r}
+nrow(Coast_Range_Bees_SpR) #1
+nrow(Central_Basin_and_Range_Bees_SpR) #2
+nrow(Mojave_Basin_and_Range_Bees_SpR) #3
+nrow(Cascades_Bees_SpR) #4
+nrow(Sierra_Nevadas_Bees_SpR) #5
+nrow(Cali_Coastal_Sage_Chap_Oak_Woodlands_Bees_SpR) #6
+nrow(Central_Cali_Valley_Bees_SpR) #7
+nrow(Klamath_Mountains_Bees_SpR) #8
+nrow(Southern_and_Baja_Cali_PineOak_Mounts_BeesSpR) #9
+nrow(Northern_Basin_and_Range_Bees_SpR) #10
+nrow(Sonoran_Desert_Bees_SpR) #11
+nrow(Eastern_Cascades_Slopes_and_Foothills_Bees_SpR) #12
+
+species_richness_counts <- c(392, 599, 917, 302, 817, 1224, 561, 349, 624, 66, 585, 299)
+
+eco_regions_3 <- c("Coast Range", "Central Basin and Range", "Mojave Basin and Range", "Cascades", "Sierra Nevadas", "Coastal Sage, Chapperal, and Oak Woodlands", "Central Valley", "Klamath Mountains", "Southern and Baja Pine Oak Mountains", "Northern Basin and Range", "Sonoran Desert", "Eastern Cascades Slopes and Foothills")
+
+eco_region_3_SpR <- data.frame(eco_regions_3, species_richness_counts)
+```
+
+### Graph the results of EcoRegion level 3 Species Richness
+```{r}
+ggplot(data = eco_region_3_SpR, aes(x = eco_regions_3, y = species_richness_counts)) +
+  geom_col() +
+  xlab("EcoRegion") +
+  ylab("Species Richness (# of Unique Species)") +
+  ggtitle("Species Richness For EcoRegions Level 3") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        plot.title = element_text( hjust = 0.5))
+```
+```{r}
+ggplot() +
+  geom_sf(data = Cali_Coastal_Sage_Chap_Oak_Woodlands1 , fill = "palegreen", color = "black") +
+  geom_sf(data = Cali_Coastal_Sage_Chap_Oak_Woodlands2, fill = "palegreen", color = "black") +
+  ggtitle("Coastal Sage, Chapperal, and Oak Woodlands") +
+  theme_bw()  
+```
+###### Further questions to ask
+
+# More info about the ecoregions would help identify what this data actually means, for example is there a certain amount of percipitation that defines an ecoregion? If so, can bee species richness be predicted by percipitation?
+
+# There is still the issue with unequal sized regions being compared here, for this to be tested I think it would be more appropriate to figure out how to randomly distribute polygons of equal size in each ecoregion to quantify differences in species richness per region
+
+# If there does seem to be a trend between species richness and percipitation, it would be interesting to look at level 4 of the ecoregions and see if they are broken up more finely based upon percipitation. This could help create more certainty based upon species richness in relation to percipitation. 
+
+##### Fine Tuning this code
+
+# Its rather obvious that this code is pretty rough on the processing since these data sets are so big, it would be helpful to construct for-loops to facilitate most of the repetitive processes. For loops would also be necessary if we want to look at the 4th level of ecoregions since it includes 117 ecoregions
+
+
+### for loop iteration
+```{r}
+
+eco_map2 <- eco_map 
+
+ for(i in 1:nrow(eco_map2)) { 
+  
+  region <- eco_map2[i,]
+  
+specimen_by_region <- specimen_bounded_sep[region,]
+
+
+eco_map3 <- sf::st_cast(region, "POLYGON")
+
+#convert sf to sp for use with other functions
+eco_map3 <-as(eco_map3, "Spatial")
+#convert sp to sf for use with this function 
+eco_map3 <-as(eco_map3, "sf")
+
+options(viewer = NULL)
+leaflet() %>%
+  addGlPolygons(data = eco_map3) %>%
+  addGlPoints(data = specimen_by_region, group = "pts")
+
+ }
+
+
+for (i in 1:nrow(eco_map)) {
+  eco_map2 <- sf::st_cast(eco_map, "POLYGON")
+  #convert sf to sp for use with other functions
+eco_map2 <-as(eco_map2, "Spatial")
+#convert sp to sf for use with this function 
+eco_map2 <-as(eco_map2, "sf")
+  options(viewer = NULL)
+leaflet() %>%
+  addGlPolygons(data = eco_map2[i,]) %>%
+  addGlPoints(data = specimen_bounded_sep[eco_map2,], group = "pts")
+  
+  
+}
+
+
+
+
+
+
+```
 
 
 ### Mapping out California Level 4
