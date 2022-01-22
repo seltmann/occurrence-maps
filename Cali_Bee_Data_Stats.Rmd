@@ -174,31 +174,41 @@ ggplot(data = observations_genera_p_fams, aes(x = bee_families, y = observations
   geom_col() +
   xlab("Bee Family") +
   ylab("Unique Genera") +
-  ggtitle("Genera Composition of Bee specimens in California") +
+  ggtitle("Genera Composition of Observations in California") +
   theme_bw() +
   theme(plot.title = element_text( hjust = 0.5))
 ```
 
+### Repeated for Unknowns
+```{r}
+# Drop empty values in genus
+unknowns <- unknowns[!(unknowns$genus==""),]
 
+####################### Genera per Family Observations #######################################
+unknown_apidae_genera <- genus_simplifier(unknowns, family = "Apidae")
+unknown_andrenidae_genera <- genus_simplifier(unknowns, family = "Andrenidae")
+unknown_megachilidae_genera <- genus_simplifier(unknowns, family = "Megachilidae")
+####################### Create a vector of unique genera per family in unknowns ##########
+nrow(unknown_apidae_genera)
+nrow(unknown_andrenidae_genera)
+nrow(unknown_megachilidae_genera)
 
+unk_fams <- c("Apidae", "Andrenidae", "Megachilidae")
+unknown_generas_v <- c(1,1,1)
 
+Unks_genera_p_fams <- data.frame(unk_fams, unknown_generas_v)
 
+###################### GGplot genera per family in Observations ###############################
+ggplot(data = Unks_genera_p_fams, aes(x = unk_fams, y = unknown_generas_v)) +
+  geom_col() +
+  xlab("Bee Family") +
+  ylab("Unique Genera") +
+  ggtitle("Genera Composition of Unknowns in California") +
+  theme_bw() +
+  theme(plot.title = element_text( hjust = 0.5))
+```
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+### Find unique number of species per family in Specimens
 ```{r}
 species_simplifier <- function(data, family=NULL, distincter=NULL){ #Make a species simplifier function
   if(!is.null(family)){
@@ -211,6 +221,8 @@ species_simplifier <- function(data, family=NULL, distincter=NULL){ #Make a spec
       
   }
 }
+
+############ Unique Species per family specimen ########################################################
 
 
 ```
