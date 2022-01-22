@@ -36,7 +36,6 @@ eco_map <- sf::read_sf("filter_polygon/cali_ecoregions_3/ca_eco_l3.shp") %>%
   sf::st_transform('+proj=longlat +datum=WGS84')
 
 
-
 leaflet() %>% addTiles() %>% 
   addPolygons(data = eco_map) 
   #addCircleMarkers(data = specimen_data, lat = ~decimalLatitude, lng = ~decimalLongitude)
@@ -500,6 +499,16 @@ ggplot(data = eco_region_3_SpR, aes(x = eco_regions_3, y = species_richness_coun
         plot.title = element_text( hjust = 0.5))
 ```
 ```{r}
+ggplot() +
+  geom_sf(data = Coast_Range, fill = "palegreen", color = "black") +
+  ggtitle("Coast Range") + 
+  theme_bw()
+
+ggplot() +
+  geom_sf(data = Central_Basin_and_Range, fill = "palegreen", color = "black") +
+  ggtitle("Central Basin") + 
+  theme_bw()
+
 ggplot() +
   geom_sf(data = Cali_Coastal_Sage_Chap_Oak_Woodlands1 , fill = "palegreen", color = "black") +
   geom_sf(data = Cali_Coastal_Sage_Chap_Oak_Woodlands2, fill = "palegreen", color = "black") +

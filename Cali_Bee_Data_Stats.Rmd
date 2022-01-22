@@ -1,0 +1,112 @@
+---
+title: "Cali_Bee_Data_Stats"
+author: "JT_Miller"
+date: "1/20/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### The goal of this Rmarkdown is to identify Summary Statistics for a data acquisition from GBIF on all Bee Families from California
+
+### The citation for this data acquisition can be found here: GBIF.org (20 January 2022) GBIF Occurrence Download https://doi.org/10.15468/dl.d3d45v
+
+#### Loading in Libraries
+```{r}
+library(sf)
+library(leaflet)
+library(rgdal)
+library(leafgl)
+#library(sp)
+library(tidyverse)
+```
+
+### Loading in Bee Data for all occurrence data from all bee families in the USA
+```{r}
+united_states_bees <- read.delim(file="C:/Users/JTroo/Desktop/L/2022_dataset/bee_occurrences_2022.txt",header=TRUE)
+
+
+```
+
+### Bringing in some necessary shape files to bound the Occurrence data to California Specifically
+```{r}
+cali_map <- sf::read_sf("filter_polygon/cali_ecoregions_3/ca_eco_l3.shp") %>% 
+  sf::st_transform('+proj=longlat +datum=WGS84')
+```
+
+### Giving occurrence data a crs to work with
+```{r}
+united_states_bees_w_crs <- st_as_sf(united_states_bees, coords = c('decimalLongitude', 'decimalLatitude'), crs = 4326, na.fail = FALSE, remove = FALSE)
+```
+
+### Bounding data by California shp file 
+```{r}
+cali_bees <- united_states_bees_w_crs[cali_map,]
+
+cali_bees <- cali_bees %>%
+  dplyr::mutate(decimalLatitude = sf::st_coordinates(.)[,2],
+                decimalLongitude = sf::st_coordinates(.)[,1])
+```
+
+### First Lets split specimens, observations, and unknowns into 3 groups
+```{r}
+specimens <- cali_bees %>% 
+  filter(basisOfRecord == "PRESERVED_SPECIMEN" | basisOfRecord == "FOSSIL_SPECIMEN" | basisOfRecord == "MATERIAL_SAMPLE")
+  
+  
+observations <- cali_bees %>% 
+  filter(basisOfRecord == "HUMAN_OBSERVATION" | basisOfRecord == "MACHINE_OBSERVATION")
+
+
+unknowns <- cali_bees %>% 
+  filter(basisOfRecord == "UNKNOWN")
+```
+
+### Percent of specimens georeferenced 
+```{r}
+specimens_w_coords <- subset(specimens, !is.na(decimalLongitude) & !is.na(decimalLatitude))
+
+percent_specimen_w_coords <- (nrow(specimens_w_coords)/nrow(specimens)) * 100
+
+print(percent_specimen_w_coords) 
+
+# Wellllll this seems unlikely...possible that assigning a CRS to the occurrence data removes anything without a lon lat coord...
+
+cali_bees_w_coords <- subset(cali_bees, !is.na(decimalLongitude) & !is.na(decimalLatitude))
+
+percent_cali_bees_w_coords <- (nrow(cali_bees_w_coords)/nrow(cali_bees)) * 100
+
+print(percent_cali_bees_w_coords)
+
+### So one of two things, either our bounding method eliminates all values that do not have coordinates (very likely) or california has all georeferenced data (very unlikely)
+united_states_bees_w_crs_coords <- subset(united_states_bees_w_crs, !is.na(decimalLongitude) & !is.na(decimalLatitude))
+
+united_states_bees_w_crs_coords <- (nrow(united_states_bees_w_crs_coords)/nrow(united_states_bees_w_crs)) * 100
+
+print(united_states_bees_w_crs_coords)
+```
+### How many genera and species per family in california (For both specimens and observations)
+```{r}
+# so take each genera and split it up to match each family 
+
+Genera_per_fam <- function(data, family=NULL, counter=NULLL){
+  if(!is.null(family)){
+    data <- data$family[data$family == "family",] # subset out the data to only include the family of interest
+  }
+  if(is.null(counter)){
+    count <- unique(data$genus) #Give only unique rows for the data set 
+    l.count <- length(count) #
+  }
+  print(l.count)
+}
+
+for (i in unique(family$specimens))
+  Genera_per_fam(i, data = specimens) # Probably dont do this since its not liking my for loop, we could us lapply instead.
+
+# So genera/family & species/family in the specimen/observation/unknown data sets?
+```
+
+
+
