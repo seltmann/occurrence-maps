@@ -17,15 +17,15 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 library(sf)
 library(leaflet)
-library(rgdal)
-library(leafgl)
+#library(rgdal)
+#library(leafgl)
 #library(sp)
 library(tidyverse)
 ```
 
 ### Loading in Bee Data for all occurrence data from all bee families in the USA
 ```{r}
-united_states_bees <- read.delim(file="C:/Users/JTroo/Desktop/L/2022_dataset/bee_occurrences_2022.txt",header=TRUE)
+united_states_bees <- read.delim(file="C:/Users/JTroo/Desktop/L/2022_dataset/bee_occurrence2.txt",header=TRUE)
 
 
 ```
@@ -49,7 +49,6 @@ cali_bees <- cali_bees %>%
   dplyr::mutate(decimalLatitude = sf::st_coordinates(.)[,2],
                 decimalLongitude = sf::st_coordinates(.)[,1])
 ```
-
 ### First Lets split specimens, observations, and unknowns into 3 groups
 ```{r}
 specimens <- cali_bees %>% 
@@ -58,8 +57,6 @@ specimens <- cali_bees %>%
   
 observations <- cali_bees %>% 
   filter(basisOfRecord == "HUMAN_OBSERVATION" | basisOfRecord == "MACHINE_OBSERVATION")
-
-
 unknowns <- cali_bees %>% 
   filter(basisOfRecord == "UNKNOWN")
 ```
@@ -67,28 +64,163 @@ unknowns <- cali_bees %>%
 ### Percent of specimens georeferenced 
 ```{r}
 specimens_w_coords <- subset(specimens, !is.na(decimalLongitude) & !is.na(decimalLatitude))
-
 percent_specimen_w_coords <- (nrow(specimens_w_coords)/nrow(specimens)) * 100
-
 print(percent_specimen_w_coords) 
-
 # Wellllll this seems unlikely...possible that assigning a CRS to the occurrence data removes anything without a lon lat coord...
-
 cali_bees_w_coords <- subset(cali_bees, !is.na(decimalLongitude) & !is.na(decimalLatitude))
-
 percent_cali_bees_w_coords <- (nrow(cali_bees_w_coords)/nrow(cali_bees)) * 100
-
 print(percent_cali_bees_w_coords)
-
 ### So one of two things, either our bounding method eliminates all values that do not have coordinates (very likely) or california has all georeferenced data (very unlikely)
 united_states_bees_w_crs_coords <- subset(united_states_bees_w_crs, !is.na(decimalLongitude) & !is.na(decimalLatitude))
-
 united_states_bees_w_crs_coords <- (nrow(united_states_bees_w_crs_coords)/nrow(united_states_bees_w_crs)) * 100
-
 print(united_states_bees_w_crs_coords)
 ```
-### How many genera and species per family in california (For both specimens and observations)
+### How many genera and species per family in california for Specimens
 ```{r}
+specimens_apidae_genus <- specimens %>% 
+  dplyr::filter(family == "Apidae") %>%
+  group_by(genus) %>% 
+  dplyr::distinct(genus, .keep_all = TRUE)
+
+unique(specimens_apidae_genus$genus) # It seems that row 19 is a blank ID, therefore lets get rid of it. 
+
+
+genus_simplifier <- function(data, family=NULL, distincter=NULL){ #Make a genus simplifier function
+  if(!is.null(family)){
+    data <- data[data$family %in% family,]
+  }
+  if(is.null(distincter)){
+    data <- data %>% 
+      dplyr::group_by(genus) %>% 
+      dplyr::distinct(genus, .keep_all=TRUE)
+      
+  }
+  return(data)
+}
+
+
+
+specimens_apidae_genus_test <- genus_simplifier(specimens, family = "Apidae") #Check works
+####################### First Drop empty spaces that show up in each genus grouping: The resultant genera outputs should be apidae=48, colletidae=19, halictidae=24, megachilidae=24, melittidae=2 ###############################
+
+specimens <- specimens[!(specimens$genus==""),] #Remove all rows that have an empty space filled for specimens
+
+####################### Genera per Family specimens #######################################
+specimens_apidae_genera <- genus_simplifier(specimens, family = "Apidae")
+specimens_colletidae_genera <- genus_simplifier(specimens, family = "Colletidae")
+specimens_andrenidae_genera <- genus_simplifier(specimens, family = "Andrenidae")
+specimens_halictidae_genera <- genus_simplifier(specimens, family = "Halictidae")
+specimens_megachilidae_genera <- genus_simplifier(specimens, family = "Megachilidae")
+specimens_melittidae_genera <- genus_simplifier(specimens, family = "Melittidae")
+
+```
+
+# Assigning values based on unique genera per family 
+```{r}
+####################### Assign values of genera per family ###############################
+nrow(specimens_apidae_genera)
+nrow(specimens_colletidae_genera)
+nrow(specimens_andrenidae_genera)
+nrow(specimens_halictidae_genera)
+nrow(specimens_megachilidae_genera)
+nrow(specimens_melittidae_genera)
+###################### Create a vector of family names ###################################
+bee_families <- c("Apidae", "Collentidae", "Andrenidae", "Halictidae", "Megachilidae", "Melittidae")
+
+###################### Create a vector with number of unique genera per family ###########
+specimens_generas_v <- c(48,3,13,24,24,2)
+
+###################### Data Frame ########################################################
+
+specimens_genera_p_fams <- data.frame(bee_families, specimens_generas_v)
+
+###################### GGPlot it #########################################################
+ggplot(data = specimens_genera_p_fams, aes(x = bee_families, y = specimens_generas_v)) +
+  geom_col() +
+  xlab("Bee Family") +
+  ylab("Unique Genera") +
+  ggtitle("Genera Composition of Bee specimens in California") +
+  theme_bw() +
+  theme(plot.title = element_text( hjust = 0.5))
+```
+
+### Repeated for Observations
+```{r}
+# Drop empty values in genus
+observations <- observations[!(observations$genus==""),]
+
+####################### Genera per Family Observations #######################################
+observation_apidae_genera <- genus_simplifier(observations, family = "Apidae")
+observation_colletidae_genera <- genus_simplifier(observations, family = "Colletidae")
+observation_andrenidae_genera <- genus_simplifier(observations, family = "Andrenidae")
+observation_halictidae_genera <- genus_simplifier(observations, family = "Halictidae")
+observation_megachilidae_genera <- genus_simplifier(observations, family = "Megachilidae")
+observation_melittidae_genera <- genus_simplifier(observations, family = "Melittidae")
+
+####################### Create a vector of unique genera per family in observations ##########
+nrow(observation_apidae_genera)
+nrow(observation_colletidae_genera)
+nrow(observation_andrenidae_genera)
+nrow(observation_halictidae_genera)
+nrow(observation_megachilidae_genera)
+nrow(observation_melittidae_genera)
+
+observations_generas_v <- c(29,2,6,13,18,1)
+
+observations_genera_p_fams <- data.frame(bee_families, observations_generas_v)
+
+###################### GGplot genera per family in Observations ###############################
+ggplot(data = observations_genera_p_fams, aes(x = bee_families, y = observations_generas_v)) +
+  geom_col() +
+  xlab("Bee Family") +
+  ylab("Unique Genera") +
+  ggtitle("Genera Composition of Bee specimens in California") +
+  theme_bw() +
+  theme(plot.title = element_text( hjust = 0.5))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+species_simplifier <- function(data, family=NULL, distincter=NULL){ #Make a species simplifier function
+  if(!is.null(family)){
+    data <- data[data$family %in% family,]
+  }
+  if(is.null(distincter)){
+    data <- data %>% 
+      dplyr::group_by(specificEpithet) %>% 
+      dplyr::distinct(specificEpithet, .keep_all=TRUE)
+      
+  }
+}
+
+
+```
+
+
+
+
+
+
+```{r eval=FALSE, include=FALSE}
 # so take each genera and split it up to match each family 
 
 Genera_per_fam <- function(data, family=NULL, counter=NULLL){
@@ -102,10 +234,10 @@ Genera_per_fam <- function(data, family=NULL, counter=NULLL){
   print(l.count)
 }
 
-for (i in unique(family$specimens))
-  Genera_per_fam(i, data = specimens) # Probably dont do this since its not liking my for loop, we could us lapply instead.
+for (i in unique(family$observations))
+  Genera_per_fam(i, data = observations) # Probably dont do this since its not liking my for loop, we could us lapply instead.
 
-# So genera/family & species/family in the specimen/observation/unknown data sets?
+# So genera/family & species/family in the observation/observation/unknown data sets?
 ```
 
 
