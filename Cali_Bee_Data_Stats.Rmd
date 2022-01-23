@@ -259,35 +259,66 @@ ggplot(data = specimen_species_df, aes(x = bee_families, y = specimen_species)) 
 ```{r}
 observations_epithet <- observations[!(observations$specificEpithet==""),] #Remove those observations that do not have a specific Epithet
 ############ Unique Species per family specimen ########################################################
-specimens_apidae_species <- species_simplifier(specimens_epithet, family = "Apidae")
-specimens_colletidae_species <-species_simplifier(specimens_epithet, family = "Colletidae")
-specimens_andrenidae_species <- species_simplifier(specimens_epithet, family = "Andrenidae")
-specimens_halictidae_species <- species_simplifier(specimens_epithet, family = "Halictidae")
-specimens_megachilidae_species <- species_simplifier(specimens_epithet, family = "Megachilidae")
-specimens_melittidae_species <- species_simplifier(specimens_epithet, family = "Melittidae")
+observations_apidae_species <- species_simplifier(observations_epithet, family = "Apidae")
+observations_colletidae_species <-species_simplifier(observations_epithet, family = "Colletidae")
+observations_andrenidae_species <- species_simplifier(observations_epithet, family = "Andrenidae")
+observations_halictidae_species <- species_simplifier(observations_epithet, family = "Halictidae")
+observations_megachilidae_species <- species_simplifier(observations_epithet, family = "Megachilidae")
+observations_melittidae_species <- species_simplifier(observations_epithet, family = "Melittidae")
 
 ############ finding the unique number of species per family ###########################################
-nrow(specimens_apidae_species)
-nrow(specimens_colletidae_species)
-nrow(specimens_andrenidae_species)
-nrow(specimens_halictidae_species)
-nrow(specimens_megachilidae_species)
-nrow(specimens_melittidae_species)
+nrow(observations_apidae_species)
+nrow(observations_colletidae_species)
+nrow(observations_andrenidae_species)
+nrow(observations_halictidae_species)
+nrow(observations_megachilidae_species)
+nrow(observations_melittidae_species)
 
-specimen_species <- c(454, 72, 549, 214, 430, 17)
+observations_species <- c(101, 11, 37, 24, 59, 3)
 
-specimen_species_df <- data.frame(bee_families, specimen_species)
+observations_species_df <- data.frame(bee_families, observations_species)
 
 ############ GGploting the results #####################################################################
-ggplot(data = specimen_species_df, aes(x = bee_families, y = specimen_species)) +
+ggplot(data = observations_species_df, aes(x = bee_families, y = observations_species)) +
   geom_col() +
   xlab("Bee Family") +
   ylab("Unique Species") +
-  ggtitle("Species Composition of Bee Specimens in California") +
+  ggtitle("Species Composition of Bee observations in California") +
   theme_bw() +
   theme(plot.title = element_text( hjust = 0.5))
 ```
+### Repeated for Unknowns
+```{r}
+observations_epithet <- observations[!(observations$specificEpithet==""),] #Remove those observations that do not have a specific Epithet
+############ Unique Species per family specimen ########################################################
+observations_apidae_species <- species_simplifier(observations_epithet, family = "Apidae")
+observations_colletidae_species <-species_simplifier(observations_epithet, family = "Colletidae")
+observations_andrenidae_species <- species_simplifier(observations_epithet, family = "Andrenidae")
+observations_halictidae_species <- species_simplifier(observations_epithet, family = "Halictidae")
+observations_megachilidae_species <- species_simplifier(observations_epithet, family = "Megachilidae")
+observations_melittidae_species <- species_simplifier(observations_epithet, family = "Melittidae")
 
+############ finding the unique number of species per family ###########################################
+nrow(observations_apidae_species)
+nrow(observations_colletidae_species)
+nrow(observations_andrenidae_species)
+nrow(observations_halictidae_species)
+nrow(observations_megachilidae_species)
+nrow(observations_melittidae_species)
+
+observations_species <- c(101, 11, 37, 24, 59, 3)
+
+observations_species_df <- data.frame(bee_families, observations_species)
+
+############ GGploting the results #####################################################################
+ggplot(data = observations_species_df, aes(x = bee_families, y = observations_species)) +
+  geom_col() +
+  xlab("Bee Family") +
+  ylab("Unique Species") +
+  ggtitle("Species Composition of Bee observations in California") +
+  theme_bw() +
+  theme(plot.title = element_text( hjust = 0.5))
+```
 
 
 
