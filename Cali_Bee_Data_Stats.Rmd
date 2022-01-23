@@ -25,7 +25,7 @@ library(tidyverse)
 
 ### Loading in Bee Data for all occurrence data from all bee families in the USA
 ```{r}
-united_states_bees <- read.delim(file="C:/Users/JTroo/Desktop/L/2022_dataset/bee_occurrence2.txt",header=TRUE)
+united_states_bees <- read.delim(file="C:/Users/JTroo/Desktop/L/2022_dataset/bee_occurrence3.txt",header=TRUE)
 
 
 ```
@@ -376,6 +376,59 @@ library(ggpubr)
 Species_Genera_Comparison <- ggarrange(Genera_Plot, Species_plot, ncol = 2, common.legend = TRUE, label.x =0.5 )
 
 ggsave("Species_Genera_Visual_Comparison.jpeg", width = 10, height = 7, plot = Species_Genera_Comparison)
+```
+### Now lets evaluate how many genera and species there are recorded for specimens per institution 
+```{r}
+specimens_w_institution <- specimens %>% 
+  mutate(Institution_Name = case_when(
+    institutionCode == "USNM" ~ "Smithsonian Museum",
+    institutionCode == "ASU" ~ "Arizona State University",
+    institutionCode == "MCZ" ~ "Harvard University",
+    institutionCode == "YPM" ~ "Princeton Peabody Museum",
+    institutionCode == "" ~ "Unlisted",
+    institutionCode == "LACM" ~ "Los Angeles Museum",
+    institutionCode == "UMNH" ~ "Utah Museum",
+    institutionCode == "UCSB" ~ " UC Santa Barbara",
+    institutionCode == "TAMU" ~ "Texas A&M University",
+    institutionCode == "CAS" ~ "California Academy of Sciences",
+    institutionCode == "KU" ~ "University of Kansas",
+    institutionCode == "USDA-ARS" ~ "US National Arboretum",
+    institutionCode == "UCM" ~ "University of Colorado",
+    institutionCode == "UA" ~ "University of Arizona",
+    institutionCode == "TTU" ~ "Texas Tech Univsersity",
+    institutionCode == "CASC" ~ "CASABIO",
+    institutionCode == "PBDB" ~ "PaleoBiology Database",
+    institutionCode == "SBMNH" ~ "Santa Barbara Museum",
+    institutionCode == "C.A. Triplehorn Insect Collection, Ohio State University, Columbus, OH (OSUC)" ~ "Ohio State University",
+    institutionCode == "VPI" ~ "Virginia Polytechnic Institute and University",
+    institutionCode == "BISON" ~ "BISON",
+    institutionCode == "CNC" ~ "Canadian National Collection",
+    institutionCode == "UTE" ~ "University of Tartu",
+    institutionCode == "SDNHM" ~ "San Diego Museum",
+    institutionCode == "CSCA" ~ "California State Collection of Arthropods",
+    institutionCode == "EMEC" ~ "Essig Museum of Entomology",
+    institutionCode == "UCRC" ~ "UC Riverside",
+    institutionCode == "UCSC" ~ "UC Santa Cruz",
+    institutionCode == "University of Central Florida Collection of Arthopods (UCFC)" ~ "Central Florida University",
+    institutionCode == "FMNH" ~ "Field Museum", 
+    institutionCode == "UNHC" ~ "University of New Hampshire",
+    institutionCode == "UTEP" ~ "UT El Paso",
+    institutionCode == "UCD" ~ "UC Davis",
+    institutionCode == "MSU" ~ "Michigan State University",
+    institutionCode == "UTIC" ~ "UT Austin",
+    institutionCode == "PSUC" ~ "Penn State University",
+    institutionCode == "OSAC" ~ "Oregon State Arthropod Collection",
+    institutionCode == "AUM" ~ "Auburn University",
+    institutionCode == "KY" ~ "University of Kentucky",
+    institutionCode == "UFPR" ~ "Universidade Federal do Parana",
+    institutionCode == "AMNH" ~ "American Museum",
+    institutionCode == "NAUF" ~ "Northern Arizona University",
+    institutionCode == "Cleveland Museum of Natural History, OH (CLEV)" ~ "Cleveland Museum",
+    institutionCode == "INHS" ~ "Illinois Natural History Survey",
+    institutionCode == "NMSU" ~ "New Mexico State University", # Well this actually is the code for both New Mexico Uni and Northwest Missouri State Uni
+    institutionCode == "UNM" ~ "University of New Mexico"
+  )
+  )
 ```
 
 
