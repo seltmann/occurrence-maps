@@ -255,39 +255,7 @@ ggplot(data = specimen_species_df, aes(x = bee_families, y = specimen_species)) 
   theme_bw() +
   theme(plot.title = element_text( hjust = 0.5))
 ```
-### Repeated for Observations 
-```{r}
-observations_epithet <- observations[!(observations$specificEpithet==""),] #Remove those observations that do not have a specific Epithet
-############ Unique Species per family specimen ########################################################
-observations_apidae_species <- species_simplifier(observations_epithet, family = "Apidae")
-observations_colletidae_species <-species_simplifier(observations_epithet, family = "Colletidae")
-observations_andrenidae_species <- species_simplifier(observations_epithet, family = "Andrenidae")
-observations_halictidae_species <- species_simplifier(observations_epithet, family = "Halictidae")
-observations_megachilidae_species <- species_simplifier(observations_epithet, family = "Megachilidae")
-observations_melittidae_species <- species_simplifier(observations_epithet, family = "Melittidae")
-
-############ finding the unique number of species per family ###########################################
-nrow(observations_apidae_species)
-nrow(observations_colletidae_species)
-nrow(observations_andrenidae_species)
-nrow(observations_halictidae_species)
-nrow(observations_megachilidae_species)
-nrow(observations_melittidae_species)
-
-observations_species <- c(101, 11, 37, 24, 59, 3)
-
-observations_species_df <- data.frame(bee_families, observations_species)
-
-############ GGploting the results #####################################################################
-ggplot(data = observations_species_df, aes(x = bee_families, y = observations_species)) +
-  geom_col() +
-  xlab("Bee Family") +
-  ylab("Unique Species") +
-  ggtitle("Species Composition of Bee observations in California") +
-  theme_bw() +
-  theme(plot.title = element_text( hjust = 0.5))
-```
-### Repeated for Unknowns
+### Repeated for Observations
 ```{r}
 observations_epithet <- observations[!(observations$specificEpithet==""),] #Remove those observations that do not have a specific Epithet
 ############ Unique Species per family specimen ########################################################
@@ -320,7 +288,95 @@ ggplot(data = observations_species_df, aes(x = bee_families, y = observations_sp
   theme(plot.title = element_text( hjust = 0.5))
 ```
 
+### Repeated for Unknowns 
+```{r}
+unknowns_epithet <- unknowns[!(unknowns$specificEpithet==""),] #Remove those unknowns that do not have a specific Epithet
+############ Unique Species per family specimen ########################################################
+unknowns_apidae_species <- species_simplifier(unknowns_epithet, family = "Apidae")
 
+unknowns_andrenidae_species <- species_simplifier(unknowns_epithet, family = "Andrenidae")
+
+unknowns_megachilidae_species <- species_simplifier(unknowns_epithet, family = "Megachilidae")
+
+
+############ finding the unique number of species per family ###########################################
+nrow(unknowns_apidae_species)
+
+nrow(unknowns_andrenidae_species)
+
+nrow(unknowns_megachilidae_species)
+
+
+unknowns_species <- c(19, 66, 6)
+
+unknowns_species_df <- data.frame(unk_fams, unknowns_species)
+
+############ GGploting the results #####################################################################
+ggplot(data = unknowns_species_df, aes(x = unk_fams, y = unknowns_species)) +
+  geom_col() +
+  xlab("Bee Family") +
+  ylab("Unique Species") +
+  ggtitle("Species Composition of Bee unknowns in California") +
+  theme_bw() +
+  theme(plot.title = element_text( hjust = 0.5))
+```
+
+### Making dataframes to condense all types of genera per fam and species per fam into one 
+```{r}
+Bee_Families_Parent <- c("Apidae","Collentidae","Andrenidae","Halictidae","Megachilidae","Melittidae", "Apidae","Collentidae","Andrenidae","Halictidae","Megachilidae","Melittidae","Apidae","Andrenidae","Megachilidae" )
+
+Basis_of_Record <- c("Specimens", "Specimens", "Specimens", "Specimens", "Specimens","Specimens", "Observations", "Observations","Observations","Observations","Observations","Observations", "Unknowns","Unknowns","Unknowns")
+
+Genera_Record <- c(48,3,13,24,24,2,29,2,6,13,18,1,1,1,1)
+
+Genera_Parent_df <- data.frame(Bee_Families_Parent, Basis_of_Record, Genera_Record)
+```
+
+### GGploting the Genera per Family on All Bases of Record
+```{r}
+library(calecopal) # Thank you An Bui! 
+
+Genera_Plot <- ggplot(Genera_Parent_df, aes(x=Bee_Families_Parent, y = Genera_Record, fill = Basis_of_Record)) +
+  geom_col(position = position_dodge2(preserve = "single")) +
+  labs(fill = "Basis of Record") +
+  xlab("Bee Family") +
+  ylab("Number of Unique Genera") +
+  ggtitle("Genera Composition of Bees in California") +
+  theme_bw() +
+  scale_fill_manual(values = cal_palette("sierra1")) +
+  theme(plot.title = element_text( hjust = 0.5), 
+        axis.text.x = element_text(angle = 45, hjust = 1))
+  
+  
+```
+### Making dataframes to condense all types of species per fam and species per fam into one 
+```{r}
+Species_Record <- c(454,72,549,214,430,17,101,11,37,24,59,3,19,66,6)
+
+Species_Parent_df <- data.frame(Bee_Families_Parent, Basis_of_Record, Species_Record)
+```
+
+```{r}
+Species_plot <- ggplot(Species_Parent_df, aes(x=Bee_Families_Parent, y = Species_Record, fill = Basis_of_Record)) +
+  geom_col(position = position_dodge2(preserve = "single")) +
+  labs(fill = "Basis of Record") +
+  xlab("Bee Family") +
+  ylab("Number of Unique Species") +
+  ggtitle("Species Composition of Bees in California") +
+  theme_bw() +
+  scale_fill_manual(values = cal_palette("sierra1")) +
+  theme(plot.title = element_text( hjust = 0.5), 
+        axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+```{r}
+### Lets arrange these plots together with ggpubr
+library(ggpubr)
+
+Species_Genera_Comparison <- ggarrange(Genera_Plot, Species_plot, ncol = 2, common.legend = TRUE, label.x =0.5 )
+
+ggsave("Species_Genera_Visual_Comparison.jpeg", width = 10, height = 7, plot = Species_Genera_Comparison)
+```
 
 
 ```{r eval=FALSE, include=FALSE}
