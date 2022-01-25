@@ -379,7 +379,7 @@ ggsave("Species_Genera_Visual_Comparison.jpeg", width = 10, height = 7, plot = S
 ```
 ### Now lets evaluate how many genera and species there are recorded for specimens per institution 
 ```{r}
-specimens_w_institution <- specimens %>% 
+specimens_w_institution <- specimens %>% #Casewhen it to make the names a bit more readable for analysis
   mutate(Institution_Name = case_when(
     institutionCode == "USNM" ~ "Smithsonian Museum",
     institutionCode == "ASU" ~ "Arizona State University",
@@ -431,6 +431,290 @@ specimens_w_institution <- specimens %>%
   )
 ```
 
+
+
+
+
+```{r}
+### Sum up the number of genera per institution (unique)
+institution_genera_summary <- specimens_w_institution %>% 
+  group_by(Institution_Name) %>% 
+  summarise(Unique_Genera_per_institution = n_distinct(genus))
+
+specimens_w_institution_sci <-specimens_w_institution %>% 
+  unite(scientific_name, genus, specificEpithet, sep = " ", remove = FALSE)
+
+
+institution_species_summary <- specimens_w_institution_sci %>% 
+  group_by(Institution_Name) %>% 
+  summarise(Unique_species_per_institution = n_distinct(scientific_name) )
+
+
+
+```
+
+### Visualizing it with ggplot
+```{r}
+
+institution_pallette <- cal_palette("sierra1", n = 46, type = "continuous")
+
+Institution_Genera_Summary_Plot <- ggplot(institution_genera_summary, aes(x=Institution_Name, y = Unique_Genera_per_institution, fill = Institution_Name)) +
+  geom_col(position = position_dodge2(preserve = "single")) +
+  labs(fill = "Institution") +
+  xlab("Institution") +
+  ylab("Number of Unique Genera Collected") +
+  ggtitle("Unique Genera Specimen Collected By Institution in California") +
+  theme_bw() +
+  scale_fill_manual(values = cal_palette("sierra1", n = 46, type = "continuous")) +
+  theme(plot.title = element_text( hjust = 0.5), 
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "none")
+  
+Institution_Genera_Summary_Plot
+
+Institution_Species_Summary_Plot <- ggplot(institution_species_summary, aes(x=Institution_Name, y = Unique_species_per_institution, fill = Institution_Name)) +
+  geom_col(position = position_dodge2(preserve = "single")) +
+  labs(fill = "Institution") +
+  xlab("Institution") +
+  ylab("Number of Unique Species Collected") +
+  ggtitle("Unique Species Specimen Collected By Institution in California") +
+  theme_bw() +
+  scale_fill_manual(values = cal_palette("sierra1", n = 46, type = "continuous")) +
+  theme(plot.title = element_text( hjust = 0.5), 
+        axis.text.x = element_text(angle = 45, hjust = 1), 
+        legend.position = "none")
+
+Institution_Species_Summary_Plot
+  
+
+```
+
+### Repeated Institution Analysis for Observations type Data
+```{r}
+observations_w_institution <- observations %>% #Casewhen it to make the names a bit more readable for analysis
+  mutate(Institution_Name = case_when(
+    institutionCode == "USNM" ~ "Smithsonian Museum",
+    institutionCode == "ASU" ~ "Arizona State University",
+    institutionCode == "MCZ" ~ "Harvard University",
+    institutionCode == "YPM" ~ "Princeton Peabody Museum",
+    institutionCode == "" ~ "Unlisted",
+    institutionCode == "LACM" ~ "Los Angeles Museum",
+    institutionCode == "UMNH" ~ "Utah Museum",
+    institutionCode == "UCSB" ~ " UC Santa Barbara",
+    institutionCode == "TAMU" ~ "Texas A&M University",
+    institutionCode == "CAS" ~ "California Academy of Sciences",
+    institutionCode == "KU" ~ "University of Kansas",
+    institutionCode == "USDA-ARS" ~ "US National Arboretum",
+    institutionCode == "UCM" ~ "University of Colorado",
+    institutionCode == "UA" ~ "University of Arizona",
+    institutionCode == "TTU" ~ "Texas Tech Univsersity",
+    institutionCode == "CASC" ~ "CASABIO",
+    institutionCode == "PBDB" ~ "PaleoBiology Database",
+    institutionCode == "SBMNH" ~ "Santa Barbara Museum",
+    institutionCode == "C.A. Triplehorn Insect Collection, Ohio State University, Columbus, OH (OSUC)" ~ "Ohio State University",
+    institutionCode == "VPI" ~ "Virginia Polytechnic Institute and University",
+    institutionCode == "BISON" ~ "BISON",
+    institutionCode == "CNC" ~ "Canadian National Collection",
+    institutionCode == "UTE" ~ "University of Tartu",
+    institutionCode == "SDNHM" ~ "San Diego Museum",
+    institutionCode == "CSCA" ~ "California State Collection of Arthropods",
+    institutionCode == "EMEC" ~ "Essig Museum of Entomology",
+    institutionCode == "UCRC" ~ "UC Riverside",
+    institutionCode == "UCSC" ~ "UC Santa Cruz",
+    institutionCode == "University of Central Florida Collection of Arthopods (UCFC)" ~ "Central Florida University",
+    institutionCode == "FMNH" ~ "Field Museum", 
+    institutionCode == "UNHC" ~ "University of New Hampshire",
+    institutionCode == "UTEP" ~ "UT El Paso",
+    institutionCode == "UCD" ~ "UC Davis",
+    institutionCode == "MSU" ~ "Michigan State University",
+    institutionCode == "UTIC" ~ "UT Austin",
+    institutionCode == "PSUC" ~ "Penn State University",
+    institutionCode == "OSAC" ~ "Oregon State Arthropod Collection",
+    institutionCode == "AUM" ~ "Auburn University",
+    institutionCode == "KY" ~ "University of Kentucky",
+    institutionCode == "UFPR" ~ "Universidade Federal do Parana",
+    institutionCode == "AMNH" ~ "American Museum",
+    institutionCode == "NAUF" ~ "Northern Arizona University",
+    institutionCode == "Cleveland Museum of Natural History, OH (CLEV)" ~ "Cleveland Museum",
+    institutionCode == "INHS" ~ "Illinois Natural History Survey",
+    institutionCode == "NMSU" ~ "New Mexico State University", # Well this actually is the code for both New Mexico Uni and Northwest Missouri State Uni
+    institutionCode == "UNM" ~ "University of New Mexico"
+  )
+  )
+
+
+### Sum up the number of genera per institution (unique)
+observations_institution_genera_summary <- observations_w_institution %>% 
+  group_by(Institution_Name) %>% 
+  summarise(Unique_Genera_per_institution = n_distinct(genus))
+
+observations_w_institution_sci <-observations_w_institution %>% 
+  unite(scientific_name, genus, specificEpithet, sep = " ", remove = FALSE)
+
+
+observations_institution_species_summary <- observations_w_institution_sci %>% 
+  group_by(Institution_Name) %>% 
+  summarise(Unique_species_per_institution = n_distinct(scientific_name) )
+
+
+
+```
+
+### Visualizing it with ggplot for Observations per Institution 
+```{r}
+
+Obs_Institution_Genera_Summary_Plot <- ggplot(observations_institution_genera_summary, aes(x=Institution_Name, y = Unique_Genera_per_institution, fill = Institution_Name)) +
+  geom_col(position = position_dodge2(preserve = "single")) +
+  labs(fill = "Institution") +
+  xlab("Institution") +
+  ylab("Number of Unique Genera Collected") +
+  ggtitle("Unique Genera Observations Collected By Institution in California") +
+  theme_bw() +
+  scale_fill_manual(values = cal_palette("sierra1", n = 46, type = "continuous")) +
+  theme(plot.title = element_text( hjust = 0.5), 
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "none")
+  
+Obs_Institution_Genera_Summary_Plot
+
+Obs_Institution_Species_Summary_Plot <- ggplot(observations_institution_species_summary, aes(x=Institution_Name, y = Unique_species_per_institution, fill = Institution_Name)) +
+  geom_col(position = position_dodge2(preserve = "single")) +
+  labs(fill = "Institution") +
+  xlab("Institution") +
+  ylab("Number of Unique Species Collected") +
+  ggtitle("Unique Species Observations Collected By Institution in California") +
+  theme_bw() +
+  scale_fill_manual(values = cal_palette("sierra1", n = 46, type = "continuous")) +
+  theme(plot.title = element_text( hjust = 0.5), 
+        axis.text.x = element_text(angle = 45, hjust = 1), 
+        legend.position = "none")
+
+Obs_Institution_Species_Summary_Plot
+  
+
+```
+
+
+
+### Time series (Specimen)
+```{r}
+
+### Remove NA year
+specimens2 <- specimens %>% 
+  drop_na(year)
+###
+genera_time_summary <- specimens2 %>% 
+  group_by(year) %>% 
+  summarise(Unique_Genera_per_Year = n_distinct(genus))
+
+specimens_w_scientific_name <- specimens2 %>% 
+  unite(scientific_name, genus, specificEpithet, sep = " ", remove = FALSE)
+
+species_time_unique_species_summary <- specimens_w_scientific_name %>%
+  group_by(year) %>% 
+  summarise(Unique_Species_per_Year = n_distinct(scientific_name))
+
+species_time_totals_species_summary <- specimens_w_scientific_name %>% 
+  group_by(year) %>% 
+  summarise(n=n())
+```
+
+
+### Graph them (Specimen)
+```{r}
+
+genera_time_series <- ggplot(genera_time_summary, aes(x = year, y = Unique_Genera_per_Year)) +
+  geom_line() +
+  ggtitle("Number of Unique Specimen Genera Logged Each Year") +
+  xlab("Time") +
+  ylab("Number of Unique Genera") +
+  theme_bw() +
+  theme(plot.title = element_text( hjust = 0.5))
+
+genera_time_series
+
+species_time_series <- ggplot(species_time_unique_species_summary, aes(x = year, y = Unique_Species_per_Year)) +
+  geom_line() +
+  ggtitle("Number of Unique Specimen Species Logged Each Year") +
+  xlab("Time") +
+  ylab("Number of Unique Species") +
+  theme_bw() +
+  theme(plot.title = element_text( hjust = 0.5))
+
+species_time_series
+
+total_specimens_per_year <- ggplot(species_time_totals_species_summary, aes(x = year, y = n)) +
+  geom_line() +
+  ggtitle("Number of Specimens Logged Per Year") +
+  xlab("Time") +
+  ylab("Number of Specimens") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5))
+
+total_specimens_per_year
+
+
+```
+
+### Time series (Observations)
+```{r}
+
+### Remove NA year
+observations2 <- observations %>% 
+  drop_na(year)
+###
+genera_time_summary_observations <- observations2 %>% 
+  group_by(year) %>% 
+  summarise(Unique_Genera_per_Year = n_distinct(genus))
+
+observations_w_scientific_name <- observations2 %>% 
+  unite(scientific_name, genus, specificEpithet, sep = " ", remove = FALSE)
+
+observations_time_unique_species_summary <- observations_w_scientific_name %>%
+  group_by(year) %>% 
+  summarise(Unique_Species_per_Year = n_distinct(scientific_name))
+
+observations_time_totals_species_summary <- observations_w_scientific_name %>% 
+  group_by(year) %>% 
+  summarise(n=n())
+```
+
+
+### Graph them (Observations)
+```{r}
+
+genera_time_series_observations <- ggplot(genera_time_summary_observations, aes(x = year, y = Unique_Genera_per_Year)) +
+  geom_line() +
+  ggtitle("Number of Unique Observation Genera Logged Each Year") +
+  xlab("Time") +
+  ylab("Number of Unique Genera") +
+  theme_bw() +
+  theme(plot.title = element_text( hjust = 0.5))
+
+genera_time_series_observations
+
+observation_time_series <- ggplot(observation_time_unique_species_summary, aes(x = year, y = Unique_Species_per_Year)) +
+  geom_line() +
+  ggtitle("Number of Unique Observation Species Logged Each Year") +
+  xlab("Time") +
+  ylab("Number of Unique Species") +
+  theme_bw() +
+  theme(plot.title = element_text( hjust = 0.5))
+
+observation_time_series
+
+total_observations_per_year <- ggplot(observations_time_totals_species_summary, aes(x = year, y = n)) +
+  geom_line() +
+  ggtitle("Number of Specimens Logged Per Year") +
+  xlab("Time") +
+  ylab("Number of Specimens") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5))
+
+total_observations_per_year
+
+
+```
 
 ```{r eval=FALSE, include=FALSE}
 # so take each genera and split it up to match each family 
