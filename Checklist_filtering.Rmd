@@ -1,0 +1,354 @@
+---
+title: "Checklist_filtering"
+author: "JT_Miller"
+date: "2/17/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### This Rmarkdown is to detail out the methods for creating my compiled dataset that uses a the Discover Life checklist to filter out synonymous data. 
+
+### Loading in the libraries
+```{r}
+library(sf)
+library(leaflet)
+library(rgdal)
+library(leafgl)
+#library(sp)
+library(tidyverse)
+library(calecopal)
+#library(data.table)
+library(sqldf)
+```
+
+### Bring the data in this is all bees across the US
+```{r}
+specimen_data <- read.delim(file="C:/Users/JTroo/Desktop/L/2022_dataset/bee_catalogued.txt",header=TRUE)
+
+specimen_data <- subset(specimen_data, !is.na(genus) &!is.na(specificEpithet) & !is.na(decimalLongitude) & !is.na(decimalLatitude))
+
+specimen_complete <- specimen_data %>% 
+  filter(!(genus == "")) %>% 
+  filter(!(specificEpithet == ""))
+
+specimen_data_SN  <- specimen_complete %>% 
+  unite(scientific_name, genus, specificEpithet, sep = " ")
+
+specimen_occur_IDed <- specimen_data_SN %>%
+  dplyr::filter(!(occurrenceID == "")) %>% 
+  dplyr::distinct(occurrenceID, .keep_all = TRUE) # It appears that 96% of the data has an associated occurrenceID, to join our data with AMNH dataset we probably should get rid of the data that doesn't have one.
+
+
+specimen_occur_IDed_CatalogNumbered <- specimen_occur_IDed %>% 
+  dplyr::filter(!(catalogNumber == "")) %>% 
+  dplyr::distinct(catalogNumber, .keep_all = TRUE)
+
+######### Below are just some steps I used to prove to myself that I was doing the correct methods ##################
+#specimen_data_SN_occur_IDED <- specimen_data_SN %>% 
+ # filter(!(occurrenceID == "")) %>% 
+  # filter(!(is.na(occurrenceID)))
+
+# specimen_data_SN_occur_IDED_Distinct <- specimen_data_SN_occur_IDED %>% 
+  # dplyr::distinct(occurrenceID, .keep_all=TRUE)
+```
+
+### AMNH Dataset
+```{r}
+AMNH_specimens <- read.delim(file = "C:/Users/JTroo/Desktop/L/AMNH_occurrences.tab", header = TRUE)
+
+AMNH_specimens_t <- AMNH_specimens %>% 
+  distinct(occurrenceID, .keep_all = TRUE) # These are equivalent, therefore no cleaning is needed on this dataset
+
+AMNH_specimens_complete <- AMNH_specimens %>%
+  filter(!(genus == "")) %>% 
+  filter(!(specificEpithet == "")) %>% 
+  dplyr::filter(!(occurrenceID == "")) %>% 
+  dplyr::distinct(occurrenceID, .keep_all = TRUE) %>% 
+  dplyr::filter(!(catalogNumber == "")) %>% 
+  dplyr::distinct(catalogNumber, .keep_all = TRUE)
+
+AMNH_specimens_data_SN_complete  <- AMNH_specimens_complete %>% 
+  unite(scientific_name, genus, specificEpithet, sep = " ")
+
+
+```
+
+### Joining together these two datasets
+```{r}
+#combined_datasets <- specimen_occur_IDed %>% 
+  #left_join(AMNH_specimens, by = "occurrenceID")
+
+#anti_join_datasets <- specimen_occur_IDed %>% 
+  #anti_join(AMNH_specimens, by = "occurrenceID")
+
+#combined_datasets2 <- specimen_occur_IDed %>% 
+  #left_join(AMNH_specimens, by = "catalogNumber")
+
+AMNH_specimens_simplified <- AMNH_specimens_data_SN_complete %>% 
+  select(institutionCode, basisOfRecord,occurrenceID, catalogNumber, eventDate, year, month, day, decimalLatitude, decimalLongitude, georeferenceVerificationStatus, scientificName, kingdom, phylum, class, order, family, scientific_name, subgenus)
+
+specimen_occur_less<- specimen_occur_IDed_CatalogNumbered %>% 
+  select(!institutionID)
+
+combined_datasets_totals <- rbind(specimen_occur_less, AMNH_specimens_simplified) 
+
+combined_datasets_distinct_occurID <- combined_datasets_totals %>% 
+  dplyr::distinct(occurrenceID, .keep_all = TRUE)
+
+combined_datasets_distinct_catalogNumber <- combined_datasets_totals %>% 
+  dplyr::distinct(catalogNumber, .keep_all = TRUE) # It appears that there is non unique numbers of catalog numbers between the two datasets so go with that? 
+
+
+
+
+#combined_datasets_SQL <- sqldf("SELECT * FROM specimen_occur_IDed ided LEFT JOIN AMNH_specimens amnh ON SUBSTRING(ided.occurrenceID, 27, LENGTH(ided.occurrenceID)) = SUBSTRING(amnh.occurrenceID, 10, LENGTH(amnh.occurrenceID))")
+```
+
+
+
+### Bring in the Discover Life Checklist
+```{r}
+discover_life <- read.csv("C:/Users/JTroo/Desktop/Github/occurence_maps/occurrence-maps/filter_polygon/DiscoverLifeNames-For Bee Library.csv")
+discover_life2 <- discover_life %>% select(scientificName, acceptance, acceptedStr)
+
+# Equating the names here to make a Key for joining
+discover_life3 <- discover_life2 %>% 
+  rename(scientific_name = acceptedStr) 
+```
+
+
+
+```{r}
+
+### Left joining the names to discover life names via SQL
+
+left_joined_specimens <- sqldf("SELECT DISTINCT s.*, dFiltered.acceptedName
+FROM combined_datasets_distinct_catalogNumber s 
+LEFT JOIN (SELECT DISTINCT s2.scientific_name, MAX(d2.scientific_name) acceptedName
+    FROM combined_datasets_distinct_catalogNumber s2
+    LEFT JOIN discover_life3 d2 ON s2.scientific_name = d2.scientificName
+    GROUP BY s2.scientific_name) dFiltered ON s.scientific_name = dFiltered.scientific_name ")
+
+left_joined_specimens_unique <- left_joined_specimens %>% 
+  distinct(acceptedName, .keep_all = TRUE) # Unique number of scientific Names 
+
+
+left_joined_specimens_NAs <- left_joined_specimens %>% 
+  filter(is.na(acceptedName)) %>% 
+  distinct(scientific_name, .keep_all = TRUE)
+
+left_joined_specimens_NAs_less <- left_joined_specimens_NAs %>% 
+  select(scientific_name, acceptedName)
+
+write.csv(left_joined_specimens_NAs_less,"C:/Users/JTroo/Desktop/Github/occurence_maps/occurrence-maps/filter_polygon/Unfound_bee_names.csv")
+
+
+######################## Retaining this as a template ##################################################
+#left_joined_specimens <- sqldf("SELECT DISTINCT s.*, dFiltered.acceptedName
+#FROM specimen_data_SN s 
+#LEFT JOIN (SELECT DISTINCT s2.scientific_name, MAX(d2.scientific_name) acceptedName
+    #FROM specimen_data_SN s2
+    #LEFT JOIN discover_life3 d2 ON s2.scientific_name = d2.scientificName
+    #GROUP BY s2.scientific_name) dFiltered ON s.scientific_name = dFiltered.scientific_name ")
+########################################################################################################
+```
+
+```{r}
+orr_et_al_names <- read.csv("C:/Users/JTroo/Desktop/Github/occurence_maps/occurrence-maps/filter_polygon/orr_et_al_bee_names.csv")
+
+orr_et_al_names2 <- orr_et_al_names %>% 
+  mutate(scientific_name = Correct_Final) %>% 
+  mutate(scientificName = Original)
+
+left_joined_NAs <- sqldf("SELECT DISTINCT s.*, dFiltered.acceptedName
+FROM left_joined_specimens_NAs s 
+LEFT JOIN (SELECT DISTINCT s2.scientific_name, MAX(d2.scientific_name) acceptedName
+    FROM left_joined_specimens_NAs s2
+    LEFT JOIN orr_et_al_names2 d2 ON s2.scientific_name = d2.scientificName
+    GROUP BY s2.scientific_name) dFiltered ON s.scientific_name = dFiltered.scientific_name ")
+
+left_joined_NAs_left_over <- left_
+```
+
+
+
+
+
+
+### Bring in the shapefiles (Cali ecoregions)
+```{r}
+eco_map <- sf::read_sf("filter_polygon/cali_ecoregions_3/ca_eco_l3.shp") %>% 
+  sf::st_transform('+proj=longlat +datum=WGS84')
+```
+
+### Filter down the occurrence data by the california shapefile
+```{r}
+specimen_data_w_crs <- st_as_sf(left_joined_specimens, coords = c('decimalLongitude', 'decimalLatitude'), crs = 4326)
+#specimen_data_w_crs.DT <- st_as_sf(specimen_data.DT, coords = c('decimalLongitude', 'decimalLatitude'), crs = 4326)
+
+specimen_bounded <- specimen_data_w_crs[eco_map,]
+#specimen_bounded.DT <- specimen_data_w_crs.DT[eco_map,]
+```
+
+### Seperating out coordinates by Lat and Lon
+```{r}
+specimen_bounded_sep <- specimen_bounded %>%
+  dplyr::mutate(decimalLatitude = sf::st_coordinates(.)[,2],
+                decimalLongitude = sf::st_coordinates(.)[,1])
+
+#specimen_bounded_sep.DT <- specimen_bounded.DT %>%
+  #dplyr::mutate(decimalLatitude = sf::st_coordinates(.)[,2],
+                #decimalLongitude = sf::st_coordinates(.)[,1])
+
+```
+
+### Create a list for the observations in california. 
+```{r}
+
+### Function Via Tidyverse
+Species_Richness_Ecoregion <- function(data, unite = NULL, distinct = NULL) {
+  if(is.null(unite)) {
+    data <- data %>%  unite(scientific_name, genus, specificEpithet, sep = " ")
+  }
+  if(is.null(distinct)){
+    data <- data %>% distinct(scientific_name, .keep_all = TRUE)
+  }
+
+  return(data)
+  
+}
+
+### Function via data.table
+#Species_Richness_Ecoregion.DT <- function(data, unite = NULL, distinct = NULL) {
+  #if(is.null(unite)) {
+   #data <- data[, scientific_name := paste(genus, specificEpithet, sep = " ")]
+  #}
+  #if(is.null(distinct)){
+    #data <- data[, .(unique_species = unique(scientific_name)), by = scientific_name]
+  #}
+
+  #return(data)
+  
+#}
+
+# Overall species in california list
+
+## Using Tidyverse
+#species_taxa <- Species_Richness_Ecoregion(specimen_bounded_sep)
+
+
+
+## Using Data.table (NOT OPERATIONAL)
+
+#species_taxa_DT_S1 <- specimen_bounded_sep.DT[, scientific_name := paste(genus, specificEpithet, sep = " ")]
+
+#species_taxa.DT <- species_taxa_DT_S1[, .(unique_species = unique(scientific_name)), by = scientific_name]
+```
+
+```{r eval=FALSE, include=FALSE}
+names(species_taxa)
+
+unique_df <- unique(species_taxa$scientific_name)
+```
+
+### Now that we have all of the occurrence data with the checklist's corrected names, lets see if we can find which ones do not have names associated with the checklist. AKA they should come up in the column acceptedName as 'NA'
+```{r}
+cali_bees <- specimen_bounded_sep # Renaming for clarity
+
+cali_bees_names_unk <- cali_bees %>% # Filtering out a list to include all of the bees with unknown names
+  filter(is.na(acceptedName))
+
+# There are 1277 observations of unknown bees according to the checklist
+
+cali_bees_names_unk_distinct <- unique(cali_bees_names_unk$scientific_name) # And 82 of those are unique. 
+```
+
+
+
+### Using sql 
+```{r}
+left_joined_cali_bees <- sqldf("SELECT DISTINCT c.scientific_name, MAX(d.scientific_name)  
+FROM cali_bees_completed_SN c 
+LEFT JOIN discover_life3 d ON c.scientific_name = d.scientificName
+GROUP BY c.scientific_name")
+
+```
+
+
+
+
+
+
+
+```{r}
+#row_count <- nrow(discover_life2)
+
+#for (i in 1:row_count) {
+    #search_SN <- discover_life2[i,1]
+    #replace_SN <- discover_life2[i,3]
+    #scientific_names <- sapply(cali_bees_completed_SN, function(x){
+        #x[x==search_SN] <- replace_SN
+       # return(x)
+   # })
+#}
+```
+### Make a for loop that iterates over cali_bees scientific name column and replaces with the accepted name in the discover life checklist. 
+```{r}
+
+
+
+merged_data <- data.frame(cali_bees_completed_SN, discover_life2, by = "scientific_name", sort = F, all.x = T)
+```
+```{r}
+discover_life2 %>%                                            # pipe in df2 
+  rowid_to_column('scientificName') %>%                     # assign rownames to 'sites'
+  gather(key = scientificName, value = acceptedStr) %>% 
+  mutate(fixed_names = acceptedStr)# transworm df2 to long form
+  right_join(cali_bees_completed_SN, by = c('fixed_names', 'acceptedStr'))     # join df1 and df2                
+```
+
+```{r}
+for(i in 1:nrow(discover_life2)){
+  
+  for(j in 1:nrow(cali_bees_completed_SN)){
+  # Take values of column scientificName and match them with scientific_name in the cali_bees
+  discover_life2$scientificName[i] == cali_bees_completed_SN$scientific_name[j]
+  }
+  
+}
+```
+
+### Using dplyr joins 
+```{r}
+
+
+#cali_bees_joined <- left_join(cali_bees_completed_SN, discover_life2, c("scientific_name" = "acceptedStr"))
+
+cali_bees_antijoined <- cali_bees_completed_SN %>% 
+  anti_join(discover_life2, c("scientific_name"= "acceptedStr"))
+```
+
+### TESTING FOR ANTIJOINS
+```{r}
+test <- read.csv("C:/Users/JTroo/Desktop/Github/occurence_maps/unique_cali_bees.csv")
+
+test2 <- test %>% 
+  rename(scientific_name = x)
+
+test_bees_left_join <- left_join(x = test2, y = discover_life3, by = c("scientific_name","scientificName")) %>% 
+  select(scientific_name)
+```
+
+```{r}
+
+
+left_joined_test <- sqldf("SELECT DISTINCT t.scientific_name, MAX(d.scientific_name) 
+FROM test2 t 
+LEFT JOIN discover_life3 d ON t.scientific_name = d.scientificName
+GROUP BY t.scientific_name")
+
+```
+
