@@ -1,0 +1,97 @@
+---
+title: "taxize_joining"
+author: "JT Miller"
+date: "3/8/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# The purpose of this rmd is to take a dataset from GBIF with possible taxonomic errors and resolve them using the taxize package.
+
+## Load in the libraries
+```{r}
+#install.packages("taxize") 
+library(taxize)
+library(tidyverse) # ALlows you to organize and tidy data
+```
+### This package includes many resolvers, but first we're going to focus on global names using the gnr fxns
+```{r}
+# Lets take a look at the taxonomic naming sources available in gnr
+sources <- gnr_datasources() 
+
+glimpse(sources) # Give us an idea of what the data looks like 
+
+# Notice that title gives us the name of each taxonomic repository, therefore choosing which one we want is important for your particular dataset
+
+unique(sources$title)
+
+```
+
+# Sample data: Santa Barbara Invert Occurrence Records
+```{r}
+# Load in some sample data 
+specimen_data <- read.delim(file="filter_polygon/occurrence.txt",header=TRUE)
+
+# Lets just look at the bees from the family Apidae in Santa Barbara utilizing the dplyr package in the tidyverse
+apidae_data <- specimen_data %>% 
+  dplyr::filter(family == "Apidae") # Filter the data down to only include only the bee family Apidae
+```
+
+# Creating the indexing for gnr_resolver
+```{r}
+# Since We're looking at bees, lets use the Discover Life Bee Species Guide. 
+
+Get_Disc_Life <- sources$id[sources$title == 'Discover Life Bee Species Guide']# This code basically says take our sources df, and pull out the ID in the same row that has "Discover Life Bee Species Guide" and assign it to rthe variable 'Get_Disc_Life'
+
+```
+
+# Organize our names in our apidae_data to have a traditional scientific name (genus specificEpithet)
+```{r}
+# First filter out anything that doesn't include data in genus and/or specificEpithet since those will be necessary 
+apidae_data_cleaned <- apidae_data %>% 
+  filter(!(genus == "")) %>% 
+  filter(!(specificEpithet == "")) # This says get rid of anything with an empty space in these fields, this is used since we don't have the traditional NAs as placeholders for missing values. 
+
+apidae_data_SN  <- apidae_data_cleaned %>% 
+  unite(scientific_name, genus, specificEpithet, sep = " ") # This just says take our apidae_data and unite the columns genus and specificEpithet, putting a space between the two and call that new united column 'scientific_name'. Store this newly made dataset as 'apidae_data_SN'
+
+# How many unique names are there in our apidae_data_SN?
+apidae_unique <- apidae_data_SN %>% 
+  distinct(scientific_name, .keep_all = TRUE)
+```
+
+# Use gnr_resolver to resolve the names in our data 
+```{r}
+Corrected_apidae <- gnr_resolve(sci = apidae_data_SN$scientific_name, data_source_ids = Get_Disc_Life) # Here we use the gnr_resolve function by filling the following arguments 
+# sci = where the scientific names sit in our dataset, if you had just a few you could get away with using c("name1", "name2"), however when looking at a large scale dataset you can call the specific column of the dataset you are interested in using the $ operator: dataset$columnOfInterest
+
+# data_source_ids = ID you found using the indexing chunk as discussed above
+
+```
+
+# We can also utilize the argument canonical = TRUE to tell gnr_resolve() that we want the matched scientific name returned in the form of just genus specificEpithet rather than the name with credentials. 
+```{r}
+Corrected_apidae_canonical <- gnr_resolve(sci = apidae_data_SN$scientific_name, data_source_ids = Get_Disc_Life, canonical = TRUE) # Gives us 69 names as opposed to the 70 we had before, indicating one of them was removed. 
+
+# What is that difference? 
+
+# First lets make the data comparable
+Corrected_apidae_canonical_Simple <- Corrected_apidae_canonical %>% 
+  dplyr::select(matched_name2) %>% 
+  dplyr::mutate(scientific_name = matched_name2) %>% 
+  dplyr::select(scientific_name)
+
+apidae_unique_Simple <- apidae_unique %>% 
+  select(scientific_name)
+
+# Utilizing SQL
+#install.packages("sqldf")
+library(sqldf)
+sqldf('SELECT * FROM apidae_unique_Simple EXCEPT SELECT * FROM Corrected_apidae_canonical_Simple')
+# The changed name is Triepeolus heterurus. 
+```
+
+
