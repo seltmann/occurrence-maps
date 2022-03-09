@@ -74,7 +74,8 @@ Corrected_apidae <- gnr_resolve(sci = apidae_data_SN$scientific_name, data_sourc
 
 # We can also utilize the argument canonical = TRUE to tell gnr_resolve() that we want the matched scientific name returned in the form of just genus specificEpithet rather than the name with credentials. 
 ```{r}
-Corrected_apidae_canonical <- gnr_resolve(sci = apidae_data_SN$scientific_name, data_source_ids = Get_Disc_Life, canonical = TRUE) # Gives us 69 names as opposed to the 70 we had before, indicating one of them was removed. 
+Corrected_apidae_canonical <- gnr_resolve(sci = apidae_data_SN$scientific_name, data_source_ids = Get_Disc_Life, canonical = TRUE)
+# Gives us 69 names as opposed to the 70 we had before, indicating one of them was removed. 
 
 # What is that difference? 
 

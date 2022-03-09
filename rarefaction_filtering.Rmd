@@ -1,0 +1,126 @@
+---
+title: "Rarefaction_filtering"
+author: "JT Miller"
+date: "3/8/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# The purpose of this markdown is to create a clean method for binning the data across the years into equal groupings, and then applying coverage based rarefaction to understand whether our shapefile's area has been well sampled. 
+
+```{r}
+# Necessary libraries
+library(tidyverse)
+library(sf)
+library(taxize)
+#install.packages("iNEXT")
+library(iNEXT)
+library(sqldf)
+```
+
+# Lets work with our simple dataset of inverts in Santa Barbara
+```{r}
+# Load in some sample data 
+specimen_data <- read.delim(file="filter_polygon/occurrence.txt",header=TRUE)
+```
+
+# Clean up the data
+```{r}
+# Get rid of any missing values for columns of interest
+specimen_data_cleaned <- specimen_data %>%
+  filter(!(decimalLatitude == "")) %>% 
+  filter(!(decimalLongitude == "")) %>% 
+  filter(!(genus == "")) %>% 
+  filter(!(specificEpithet == ""))
+
+# Specify that we want to look at bees in this dataset
+bee_data <- specimen_data_cleaned %>% 
+  filter(family %in% c("Apidae", "Megachilidae", "Halictidae", "Andrenidae", "Colletidae", "Melittidae", "Stenotritidae"))
+
+# Give the bee data a traditional scientific name column (genus specificEpithet)
+bee_data_SN  <- bee_data %>% 
+  unite(scientific_name, genus, specificEpithet, sep = " ")
+```
+
+# Using taxize's gnr_resolve() to clean up the names 
+```{r}
+# Lets take a look at the taxonomic naming sources available in gnr
+sources <- gnr_datasources() 
+
+# Since We're looking at bees, lets use the Discover Life Bee Species Guide. 
+Get_Disc_Life <- sources$id[sources$title == 'Discover Life Bee Species Guide']
+
+# Use gnr_resolve() to correct the names as per Discover Life's checklist
+Corrected_bees <- gnr_resolve(sci = bee_data_SN$scientific_name, data_source_ids = Get_Disc_Life, canonical = TRUE)
+
+# Check to see how many bees were changed for info purposes
+bee_data_distinct_names <- bee_data_SN %>% 
+  distinct(scientific_name, .keep_all = TRUE) %>% 
+  select(scientific_name)
+
+Corrected_bee_names <- Corrected_bees %>% 
+  dplyr::select(matched_name2) %>% 
+  dplyr::mutate(scientific_name = matched_name2) %>% 
+  dplyr::select(scientific_name)
+
+nrow(bee_data_distinct_names) - nrow(Corrected_bee_names)
+
+# use a SQL query to tell us which names are found in our original data that are not found after using the gnr_resolver()
+sqldf('SELECT * FROM bee_data_distinct_names EXCEPT SELECT * FROM Corrected_bee_names')
+
+```
+### Use a SQL query left join to change the names of the bees in our original dataset to that of the Corrected names by gnr_resolve()
+```{r}
+Corrected_Names_Joined <- sqldf("SELECT DISTINCT s.*, dFiltered.acceptedName
+FROM bee_data_SN s 
+LEFT JOIN (SELECT DISTINCT s2.scientific_name, MAX(d2.matched_name2) acceptedName
+    FROM bee_data_SN s2
+    LEFT JOIN Corrected_bees d2 ON s2.scientific_name = d2.matched_name2
+    GROUP BY s2.scientific_name) dFiltered ON s.scientific_name = dFiltered.scientific_name ")
+
+# Check to see if it worked by searching for the bees we know that gnr_resolve() should of gotten rid of.
+Corrected_bee_names %>% 
+  select(scientific_name) %>% 
+  filter(scientific_name == "Triepeolus heterurus" | scientific_name == "Lasioglossum nevadensis")
+# Seems to be successful 
+
+# Rename this dataset for clarity 
+
+bees_df <- Corrected_Names_Joined
+```
+
+# Now lets use our filtering by shapefile method to include only data thats inside of coal oil point reserve 
+```{r}
+# Bring in the coal oil point shapefile, Transform to WGS84
+copr_boundary <- sf::read_sf("filter_polygon/COPR_Boundary_2010/COPR_boundary2010.shp")%>% 
+  sf::st_transform('+proj=longlat +datum=WGS84')
+
+# Make our bee data have the WGS84 CRS
+bees_df_w_crs <- st_as_sf(bees_df, coords = c('decimalLongitude', 'decimalLatitude'), crs = 4326)
+
+# Bound the bees by the coal oil point shapefile
+bounded_bees <- bees_df_w_crs[copr_boundary,]
+
+# Bring back seperate columns for the lat and lon
+bounded_bees_sep <- bounded_bees %>%
+  dplyr::mutate(decimalLatitude = sf::st_coordinates(.)[,2],
+                decimalLongitude = sf::st_coordinates(.)[,1])
+
+```
+
+
+# Lets organize the data into a binnable form 
+```{r}
+# First lets organize the data by year
+bounded_bees_ordered <- bounded_bees_sep[order(as.Date(bounded_bees_sep$eventDate)),,drop = FALSE] # Orders the data by the eventDate column
+
+
+
+
+
+bounded_bees_intervals <- bounded_bees_sep %>%
+  mutate(count_cut_intervals = cut_interval(year, n = 10))
+```
+
