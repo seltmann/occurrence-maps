@@ -1,0 +1,101 @@
+---
+title: "EcoRegion_Datasets"
+author: "JT_Miller"
+date: "3/14/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## The purpose of this markdown is to create datasets for the analysis of the ecoregions. To do this:
+1) Data from GBIF pull and AMNH will be read, cleaned, and combined into one dataset
+2) The Taxize and left join will be used to resolve and replace errenous names
+3) The resulting dataset will then be parsed out by each ecoregion and wrote to its own .csv
+
+## Necessary Libraries
+```{r}
+library(sf)
+library(tidyverse)
+library(taxize)
+library(leaflet)
+library(sqldf)
+```
+
+
+
+## 1. Data pull from GBIF and AMNH
+```{r}
+# Read in the data from GBIF
+specimen_data <- read.delim(file="E:/CCBER/Occurrence_Maps/Bee_diversity_research/Data/bee_catalogued.txt",header=TRUE)
+
+# Remove data that does not have an associated genus or specificEpithet
+specimen_complete <- specimen_data %>% 
+  filter(!(genus == "")) %>% 
+  filter(!(specificEpithet == ""))
+
+# Unite the genus and specificEpithet column to give a scientific name
+specimen_data_SN  <- specimen_complete %>% 
+  unite(scientific_name, genus, specificEpithet, sep = " ")
+
+# Remove any empty occurrenceIDs and keep only distinct values
+specimen_occur_IDed <- specimen_data_SN %>%
+  dplyr::filter(!(occurrenceID == "")) %>% 
+  dplyr::distinct(occurrenceID, .keep_all = TRUE)
+
+# Remove any empty catalogeNumbers and keep only distinct values
+specimen_occur_IDed_CatalogNumbered <- specimen_occur_IDed %>% 
+  dplyr::filter(!(catalogNumber == "")) %>% 
+  dplyr::distinct(catalogNumber, .keep_all = TRUE)
+
+# Read in the data from AMNH
+AMNH_specimens <- read.delim(file = "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Data/AMNH_occurrences.tab", header = TRUE)
+
+# Check
+AMNH_specimens_t <- AMNH_specimens %>% 
+  distinct(occurrenceID, .keep_all = TRUE) # These are equivalent, therefore no cleaning is needed on this dataset
+
+# Filter out any empty values for the same fields as the GBIF pull, and keep only distinct values for OccurID and CatalogNumber
+AMNH_specimens_complete <- AMNH_specimens %>%
+  filter(!(genus == "")) %>% 
+  filter(!(specificEpithet == "")) %>% 
+  dplyr::filter(!(occurrenceID == "")) %>% 
+  dplyr::distinct(occurrenceID, .keep_all = TRUE) %>% 
+  dplyr::filter(!(catalogNumber == "")) %>% 
+  dplyr::distinct(catalogNumber, .keep_all = TRUE)
+
+# Create a scientific name column
+AMNH_specimens_data_SN_complete  <- AMNH_specimens_complete %>% 
+  unite(scientific_name, genus, specificEpithet, sep = " ")
+
+# Remove any columns that aren't comparable between the two datasets
+AMNH_specimens_simplified <- AMNH_specimens_data_SN_complete %>% 
+  select(institutionCode, basisOfRecord,occurrenceID, catalogNumber, eventDate, year, month, day, decimalLatitude, decimalLongitude, georeferenceVerificationStatus, scientificName, kingdom, phylum, class, order, family, scientific_name, subgenus)
+
+specimen_occur_less<- specimen_occur_IDed_CatalogNumbered %>% 
+  select(!institutionID)
+
+combined_datasets_totals <- rbind(specimen_occur_less, AMNH_specimens_simplified) 
+
+# NOTE: catalogNumber was again more inclusive, therefore the distinct was ran on it. 
+
+combined_datasets_distinct_catalogNumber <- combined_datasets_totals %>% 
+  dplyr::distinct(catalogNumber, .keep_all = TRUE) 
+```
+
+### 2. Taxize the data and Left join to find and replace taxonomic mistakes.
+```{r}
+# Make a variable that stores the sources that can be used in the global names database
+sources <- gnr_datasources()
+
+# Subset out the sources variable to only include the id for the Discover Life Bee Species Guide, set that to the variable 'Get_Disc_Life'
+Get_Disc_Life <- sources$id[sources$title == 'Discover Life Bee Species Guide']
+
+# Do the same thing but add ITIS as a second id
+Get_Disc_Life_ITIS <- c(sources$id[sources$title == 'Discover Life Bee Species Guide'], sources$id[sources$title == 'Integrated Taxonomic Information SystemITIS'])
+
+# Find the Corrected Names 
+
+```
+
