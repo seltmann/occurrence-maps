@@ -21,6 +21,7 @@ library(tidyverse)
 library(taxize)
 library(leaflet)
 library(sqldf)
+library(calecopal)
 ```
 
 
@@ -95,7 +96,126 @@ Get_Disc_Life <- sources$id[sources$title == 'Discover Life Bee Species Guide']
 # Do the same thing but add ITIS as a second id
 Get_Disc_Life_ITIS <- c(sources$id[sources$title == 'Discover Life Bee Species Guide'], sources$id[sources$title == 'Integrated Taxonomic Information SystemITIS'])
 
-# Find the Corrected Names 
+# 
+unique_names <- combined_datasets_distinct_catalogNumber %>% 
+  distinct(scientific_name, .keep_all = TRUE)
 
+# Find the Corrected Names, use gnr_resolve to look at scientific name column and give resolved names based on the preferred source of Discover Life, and secondarily ITIS. Then change the scientific name to only include genus and specific Epithet using canonical = TRUE. 
+Corrected_Names <- gnr_resolve(sci = unique_names$scientific_name, data_source_ids = Get_Disc_Life_ITIS, preferred_data_sources = Get_Disc_Life, resolve_once = TRUE, canonical = TRUE)
+
+# Take Corrected_Names and remove any values for ____ that are 0.750 or below
+Corrected_Names_r <- Corrected_Names %>% 
+  filter(!(score == 0.750)) # Loses 38 Names that we are not confident in.
+
+# Use a left join SQL query to correct the names in our dataset (THIS NEEDS TO BE UPDATED)
+#  
+left_joined_specimens <- sqldf("SELECT DISTINCT dataset.*, real_name_map.accepted_name
+FROM combined_datasets_distinct_catalogNumber dataset 
+LEFT JOIN (SELECT DISTINCT sub_dataset.scientific_name, MAX(sub_real_names.matched_name2) accepted_name
+    FROM combined_datasets_distinct_catalogNumber sub_dataset
+    LEFT JOIN Corrected_Names_r sub_real_names ON sub_dataset.scientific_name = sub_real_names.user_supplied_name
+    GROUP BY sub_dataset.scientific_name) real_name_map ON dataset.scientific_name = real_name_map.accepted_name")
+
+```
+
+
+### 3. The resulting dataset must be changed in a spatial type file and then parsed out to each ecoregion respectively. These Ecoregion Datasets will then be written to their own .csv files. 
+```{r}
+# Bring in 3rd level of Ecoregions by the EPA
+eco_map <- sf::read_sf("filter_polygon/cali_ecoregions_3/ca_eco_l3.shp") %>% 
+  sf::st_transform('+proj=longlat +datum=WGS84') 
+
+colpal <- colorFactor(c("#00EDF4", "#F40000", "#D58400", "#139715", "#3740AE"), eco_map$L2_KEY)
+
+colpal_ext <- colorFactor(c("#a6cee3", "#1f78b4", "#b2df8a", "#33a02c", "#fb9a99", "#e31a1c", "#fdbf6f", "#ff7f00", "#cab2d6", "#6a3d9a", "#ffff99", "#b15928"), eco_map$NA_L3NAME)
+
+leaflet(eco_map) %>%
+  addPolygons(stroke = FALSE, smoothFactor = 0.2, fillOpacity = 1,
+              color = ~colpal_ext(NA_L3NAME)) %>% 
+   addProviderTiles("Esri.WorldGrayCanvas") %>% 
+  addLegend("bottomright", pal = colpal_ext, values = eco_map$NA_L3NAME)
+
+# Remove anything without a lat lon coordinate 
+bees_w_coords <- left_joined_specimens %>% 
+  dplyr::filter(!is.na(decimalLatitude)|!is.na(decimalLongitude)) %>% 
+  dplyr::filter(!(decimalLongitude == "")) %>% 
+  dplyr::filter(!(decimalLatitude == ""))
+
+bees_w_coords_w_crs <- st_as_sf(bees_w_coords, coords = c('decimalLongitude', 'decimalLatitude'), crs = 4326)
+
+bees_bounded <- bees_w_coords_w_crs[eco_map,]
+
+bees_bounded_sep <- bees_bounded %>%
+  dplyr::mutate(decimalLatitude = sf::st_coordinates(.)[,2],
+                decimalLongitude = sf::st_coordinates(.)[,1])
+
+
+
+```
+
+```{r}
+### Parsing out the shapefiles 
+
+#Seperating out the shapefile by ecoregions lvl 3
+Coast_Range <- eco_map[1,]
+Central_Basin_and_Range <- eco_map[2,]
+Mojave_Basin_and_Range <- eco_map[3,]
+Cascades <- eco_map[4,]
+Sierra_Nevadas <- eco_map[5,]
+Cali_Coastal_Sage_Chap_Oak_Woodlands1 <- eco_map[6,]
+Central_Cali_Valley <- eco_map[7,]
+Klamath_Mountains <- eco_map[8,]
+Southern_and_Baja_Cali_PineOak_Mounts <- eco_map[9,]
+Northern_Basin_and_Range <- eco_map[10,]
+Sonoran_Desert <- eco_map[11,]
+Cali_Coastal_Sage_Chap_Oak_Woodlands2 <- eco_map[12,]
+Eastern_Cascades_Slopes_and_Foothills <- eco_map[13,]
+
+# Subset the bees out by each of the ecoregion shapefiles
+Coast_Range_Bees <- bees_bounded_sep[Coast_Range,]
+Central_Basin_and_Range_Bees <- bees_bounded_sep[Central_Basin_and_Range,]
+Mojave_Basin_and_Range_Bees <- bees_bounded_sep[Mojave_Basin_and_Range,]
+Cascades_Bees <- bees_bounded_sep[Cascades,]
+Sierra_Nevadas_Bees <- bees_bounded_sep[Sierra_Nevadas,]
+Cali_Coastal_Sage_Chap_Oak_Woodlands1_Bees <- bees_bounded_sep[Cali_Coastal_Sage_Chap_Oak_Woodlands1,]
+Central_Cali_Valley_Bees <- bees_bounded_sep[Central_Cali_Valley,]
+Klamath_Mountains_Bees <- bees_bounded_sep[Klamath_Mountains,]
+Southern_and_Baja_Cali_PineOak_Mounts_Bees <- bees_bounded_sep[Southern_and_Baja_Cali_PineOak_Mounts,]
+Northern_Basin_and_Range_Bees <- bees_bounded_sep[Northern_Basin_and_Range,]
+Sonoran_Desert_Bees <- bees_bounded_sep[Sonoran_Desert,]
+Cali_Coastal_Sage_Chap_Oak_Woodlands2_Bees <- bees_bounded_sep[Cali_Coastal_Sage_Chap_Oak_Woodlands2,]
+Eastern_Cascades_Slopes_and_Foothills_Bees <- bees_bounded_sep[Eastern_Cascades_Slopes_and_Foothills,]
+
+#combining the Sage Chap Woodland regions since they are the same (?)
+Cali_Coastal_Sage_Chap_Oak_Woodlands_Bees <- rbind(Cali_Coastal_Sage_Chap_Oak_Woodlands1_Bees, Cali_Coastal_Sage_Chap_Oak_Woodlands2_Bees)
+
+
+```
+
+# Write the Regions to their own .csv files 
+```{r}
+st_write(Coast_Range_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/Coast_Range_Bees.csv",  layer_options = "GEOMETRY=AS_WKT")
+
+st_write(Central_Basin_and_Range_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/Central_Basin_and_Range_Bees.csv",  layer_options = "GEOMETRY=AS_WKT")
+
+st_write(Mojave_Basin_and_Range_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/Mojave_Basin_and_Range_Bees.csv",  layer_options = "GEOMETRY=AS_WKT")
+
+st_write(Cascades_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/Cascades_Bees.csv",  layer_options = "GEOMETRY=AS_WKT")
+
+st_write(Sierra_Nevadas_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/Sierra_Nevadas_Bees.csv",  layer_options = "GEOMETRY=AS_WKT")
+
+st_write(Cali_Coastal_Sage_Chap_Oak_Woodlands_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/Cali_Coastal_Sage_Chap_Oak_Woodlands_Bees.csv",  layer_options = "GEOMETRY=AS_WKT")
+
+st_write(Central_Cali_Valley_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/Central_Cali_Valley_Bees.csv",  layer_options = "GEOMETRY=AS_WKT")
+
+st_write(Klamath_Mountains_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/Klamath_Mountains_Bees.csv",  layer_options = "GEOMETRY=AS_WKT")
+
+st_write(Southern_and_Baja_Cali_PineOak_Mounts_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/Southern_and_Baja_Cali_PineOak_Mounts_Bees.csv",  layer_options = "GEOMETRY=AS_WKT")
+
+st_write(Northern_Basin_and_Range_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/Northern_Basin_and_Range_Bees.csv",  layer_options = "GEOMETRY=AS_WKT")
+
+st_write(Sonoran_Desert_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/Sonoran_Desert_Bees.csv",  layer_options = "GEOMETRY=AS_WKT")
+
+st_write(Eastern_Cascades_Slopes_and_Foothills_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/Eastern_Cascades_Slopes_and_Foothills_Bees.csv",  layer_options = "GEOMETRY=AS_WKT")
 ```
 
