@@ -116,6 +116,10 @@ LEFT JOIN (SELECT DISTINCT sub_dataset.scientific_name, MAX(sub_real_names.match
     LEFT JOIN Corrected_Names_r sub_real_names ON sub_dataset.scientific_name = sub_real_names.user_supplied_name
     GROUP BY sub_dataset.scientific_name) real_name_map ON dataset.scientific_name = real_name_map.accepted_name")
 
+
+left_joined_specimens_dropped <- left_joined_specimens %>% 
+  filter(!(is.na(accepted_name)))
+
 ```
 
 
@@ -136,7 +140,7 @@ leaflet(eco_map) %>%
   addLegend("bottomright", pal = colpal_ext, values = eco_map$NA_L3NAME)
 
 # Remove anything without a lat lon coordinate 
-bees_w_coords <- left_joined_specimens %>% 
+bees_w_coords <- left_joined_specimens_dropped %>% 
   dplyr::filter(!is.na(decimalLatitude)|!is.na(decimalLongitude)) %>% 
   dplyr::filter(!(decimalLongitude == "")) %>% 
   dplyr::filter(!(decimalLatitude == ""))
@@ -194,28 +198,28 @@ Cali_Coastal_Sage_Chap_Oak_Woodlands_Bees <- rbind(Cali_Coastal_Sage_Chap_Oak_Wo
 
 # Write the Regions to their own .csv files 
 ```{r}
-st_write(Coast_Range_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/Coast_Range_Bees.csv",  layer_options = "GEOMETRY=AS_WKT")
+st_write(Coast_Range_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/EcoRegion_Bees/Coast_Range_Bees.csv",  layer_options = "GEOMETRY=AS_WKT")
 
-st_write(Central_Basin_and_Range_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/Central_Basin_and_Range_Bees.csv",  layer_options = "GEOMETRY=AS_WKT")
+st_write(Central_Basin_and_Range_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/EcoRegion_Bees/Central_Basin_and_Range_Bees.csv",  layer_options = "GEOMETRY=AS_WKT")
 
-st_write(Mojave_Basin_and_Range_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/Mojave_Basin_and_Range_Bees.csv",  layer_options = "GEOMETRY=AS_WKT")
+st_write(Mojave_Basin_and_Range_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/EcoRegion_Bees/Mojave_Basin_and_Range_Bees.csv",  layer_options = "GEOMETRY=AS_WKT")
 
-st_write(Cascades_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/Cascades_Bees.csv",  layer_options = "GEOMETRY=AS_WKT")
+st_write(Cascades_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/EcoRegion_Bees/Cascades_Bees.csv",  layer_options = "GEOMETRY=AS_WKT")
 
-st_write(Sierra_Nevadas_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/Sierra_Nevadas_Bees.csv",  layer_options = "GEOMETRY=AS_WKT")
+st_write(Sierra_Nevadas_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/EcoRegion_Bees/Sierra_Nevadas_Bees.csv",  layer_options = "GEOMETRY=AS_WKT")
 
-st_write(Cali_Coastal_Sage_Chap_Oak_Woodlands_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/Cali_Coastal_Sage_Chap_Oak_Woodlands_Bees.csv",  layer_options = "GEOMETRY=AS_WKT")
+st_write(Cali_Coastal_Sage_Chap_Oak_Woodlands_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/EcoRegion_Bees/Cali_Coastal_Sage_Chap_Oak_Woodlands_Bees.csv",  layer_options = "GEOMETRY=AS_WKT")
 
-st_write(Central_Cali_Valley_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/Central_Cali_Valley_Bees.csv",  layer_options = "GEOMETRY=AS_WKT")
+st_write(Central_Cali_Valley_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/EcoRegion_Bees/Central_Cali_Valley_Bees.csv",  layer_options = "GEOMETRY=AS_WKT")
 
-st_write(Klamath_Mountains_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/Klamath_Mountains_Bees.csv",  layer_options = "GEOMETRY=AS_WKT")
+st_write(Klamath_Mountains_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/EcoRegion_Bees/Klamath_Mountains_Bees.csv",  layer_options = "GEOMETRY=AS_WKT")
 
-st_write(Southern_and_Baja_Cali_PineOak_Mounts_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/Southern_and_Baja_Cali_PineOak_Mounts_Bees.csv",  layer_options = "GEOMETRY=AS_WKT")
+st_write(Southern_and_Baja_Cali_PineOak_Mounts_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/EcoRegion_Bees/Southern_and_Baja_Cali_PineOak_Mounts_Bees.csv",  layer_options = "GEOMETRY=AS_WKT")
 
-st_write(Northern_Basin_and_Range_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/Northern_Basin_and_Range_Bees.csv",  layer_options = "GEOMETRY=AS_WKT")
+st_write(Northern_Basin_and_Range_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/EcoRegion_Bees/Northern_Basin_and_Range_Bees.csv",  layer_options = "GEOMETRY=AS_WKT")
 
-st_write(Sonoran_Desert_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/Sonoran_Desert_Bees.csv",  layer_options = "GEOMETRY=AS_WKT")
+st_write(Sonoran_Desert_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/EcoRegion_Bees/Sonoran_Desert_Bees.csv",  layer_options = "GEOMETRY=AS_WKT")
 
-st_write(Eastern_Cascades_Slopes_and_Foothills_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/Eastern_Cascades_Slopes_and_Foothills_Bees.csv",  layer_options = "GEOMETRY=AS_WKT")
+st_write(Eastern_Cascades_Slopes_and_Foothills_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/EcoRegion_Bees/Eastern_Cascades_Slopes_and_Foothills_Bees.csv",  layer_options = "GEOMETRY=AS_WKT")
 ```
 
