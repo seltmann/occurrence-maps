@@ -21,7 +21,6 @@ library(tidyverse)
 library(taxize)
 library(leaflet)
 library(sqldf)
-library(calecopal)
 ```
 
 
@@ -29,7 +28,7 @@ library(calecopal)
 ## 1. Data pull from GBIF and AMNH
 ```{r}
 # Read in the data from GBIF
-specimen_data <- read.delim(file="E:/CCBER/Occurrence_Maps/Bee_diversity_research/Data/bee_catalogued.txt",header=TRUE)
+specimen_data <- read.delim(file="D:/CCBER/Occurrence_Maps/Bee_diversity_research/Data/bee_catalogued.txt",header=TRUE)
 
 # Remove data that does not have an associated genus or specificEpithet
 specimen_complete <- specimen_data %>% 
@@ -51,7 +50,7 @@ specimen_occur_IDed_CatalogNumbered <- specimen_occur_IDed %>%
   dplyr::distinct(catalogNumber, .keep_all = TRUE)
 
 # Read in the data from AMNH
-AMNH_specimens <- read.delim(file = "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Data/AMNH_occurrences.tab", header = TRUE)
+AMNH_specimens <- read.delim(file = "D:/CCBER/Occurrence_Maps/Bee_diversity_research/Data/AMNH_occurrences.tab", header = TRUE)
 
 # Check
 AMNH_specimens_t <- AMNH_specimens %>% 
@@ -197,7 +196,7 @@ Cali_Coastal_Sage_Chap_Oak_Woodlands_Bees <- rbind(Cali_Coastal_Sage_Chap_Oak_Wo
 ```
 
 # Write the Regions to their own .csv files 
-```{r}
+```{r eval=FALSE, include=FALSE}
 st_write(Coast_Range_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/EcoRegion_Bees/Coast_Range_Bees.csv",  layer_options = "GEOMETRY=AS_WKT")
 
 st_write(Central_Basin_and_Range_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/EcoRegion_Bees/Central_Basin_and_Range_Bees.csv",  layer_options = "GEOMETRY=AS_WKT")
@@ -221,5 +220,91 @@ st_write(Northern_Basin_and_Range_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_
 st_write(Sonoran_Desert_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/EcoRegion_Bees/Sonoran_Desert_Bees.csv",  layer_options = "GEOMETRY=AS_WKT")
 
 st_write(Eastern_Cascades_Slopes_and_Foothills_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/EcoRegion_Bees/Eastern_Cascades_Slopes_and_Foothills_Bees.csv",  layer_options = "GEOMETRY=AS_WKT")
+```
+
+### Steps towards iNEXT, making an incidence dataframe.
+```{r}
+# First I need to create a Incidence dataframe that has the columns as each Ecoregion, and the rows as unique species found in all California.
+
+regions <- unique(c(eco_map$NA_L3NAME))
+
+print(regions)
+
+unique_bee_names <- unique(c(bees_bounded_sep$accepted_name))
+
+df <- data.frame(unique_bee_names, EcoRegions = regions)
+
+print(df)
+glimpse(df)
+
+install.packages("fossil")
+library(fossil)
+create.matrix(df)
+```
+```{r}
+#install.packages("vegan")
+library(vegan)
+#install.packages("reshape")
+library(reshape)
+
+Klamath_Mountains_Bees$ecoregion <- 'Klamath_Mountains' # Give the ecoregion a name
+Klamath_Mountains_Bees$weighted_value <- 1 # Create a value as a place holder just to say 'Hey this is 1 bee'
+Klamath_df <- as.data.frame(Klamath_Mountains_Bees) # Make it into a dataframe
+
+melted_data <- melt(Klamath_df, id = c(names(Klamath_df))) # Melt the data frame so we can reshape it
+
+site_reshaped <- reshape::cast(melted_data, accepted_name ~ ecoregion, value = 'weighted_value') # Reshape it 
+
+
+test <- Klamath_Mountains_Bees %>% 
+  filter(accepted_name == "Anthophora urbana") # Check it 
+
+########################
+decostand(Klamath_Mountains_Bees$accepted_name, method = "pa")
+
+Klamath_Mountains_Bees$ecoregion <- 'Klamath_Mountains' # Give the ecoregion a name
+Coast_Range_Bees$ecoregion <- 'Coast_Range'
+Central_Basin_and_Range_Bees$ecoregion <- 'Central_Basin_and_Range'
+Mojave_Basin_and_Range_Bees$ecoregion <- 'Mojave_Basin_and_Range'
+Cascades_Bees$ecoregion <- 'Cascades'
+Sierra_Nevadas_Bees$ecoregion <- 'Sierra_Nevadas'
+Cali_Coastal_Sage_Chap_Oak_Woodlands_Bees$ecoregion <- 'Cali_Coastal_Sage_Chap_Oak_Woodlands'
+Central_Cali_Valley_Bees$ecoregion <- 'Central_Cali_Valley'
+Southern_and_Baja_Cali_PineOak_Mounts_Bees$ecoregion <- 'Southern_and_Baja_Cali_PineOak_Mounts'
+Northern_Basin_and_Range_Bees$ecoregion <- 'Northern_Basin_and_Range'
+Sonoran_Desert_Bees$ecoregion <- 'Sonoran_Desert'
+Eastern_Cascades_Slopes_and_Foothills_Bees$ecoregion <- 'Eastern_Cascades_Slopes_and_Foothills'
+
+combined_ecoregions <- rbind(Coast_Range_Bees,Central_Basin_and_Range_Bees,Mojave_Basin_and_Range_Bees,Cascades_Bees,Sierra_Nevadas_Bees,Cali_Coastal_Sage_Chap_Oak_Woodlands_Bees, Central_Cali_Valley_Bees, Southern_and_Baja_Cali_PineOak_Mounts_Bees,Northern_Basin_and_Range_Bees, Sonoran_Desert_Bees, Klamath_Mountains_Bees,Eastern_Cascades_Slopes_and_Foothills_Bees)
+
+combined_ecoregions$weighted_value <- 1
+# Now lets use Reshape!?
+melted_bees <- melt(combined_ecoregions, id = c(names(combined_ecoregions)))
+
+combined_ecoregions2 <- combined_ecoregions %>% 
+  st_drop_geometry()
+
+site_reshaped <- reshape::cast(combined_ecoregions, accepted_name ~ ecoregion, value = 'weighted_value') # Reshape it
+```
+
+```{r}
+##### Example on getting the data into incidence_raw format provided by iNEXT
+
+library(ggplot2)
+library(vegan)
+library(iNEXT)
+
+data(BCI)
+t.BCI <- as.data.frame(t(BCI))
+
+BCI.1 <- t.BCI[1:225, 1:15]
+BCI.1 <- as.matrix((BCI.1 > 0) + 0)
+
+BCI.2 <- t.BCI[1:225, 16:27]
+BCI.2 <- as.matrix((BCI.2 > 0) + 0)
+
+BCI.3 <- t.BCI[1:225, 28:30]
+
+
 ```
 
