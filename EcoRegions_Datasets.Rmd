@@ -223,7 +223,7 @@ st_write(Eastern_Cascades_Slopes_and_Foothills_Bees, "E:/CCBER/Occurrence_Maps/B
 ```
 
 ### Steps towards iNEXT, making an incidence dataframe.
-```{r}
+```{r eval=FALSE, include=FALSE}
 # First I need to create a Incidence dataframe that has the columns as each Ecoregion, and the rows as unique species found in all California.
 
 regions <- unique(c(eco_map$NA_L3NAME))
@@ -247,20 +247,32 @@ library(vegan)
 #install.packages("reshape")
 library(reshape)
 
-Klamath_Mountains_Bees$ecoregion <- 'Klamath_Mountains' # Give the ecoregion a name
-Klamath_Mountains_Bees$weighted_value <- 1 # Create a value as a place holder just to say 'Hey this is 1 bee'
-Klamath_df <- as.data.frame(Klamath_Mountains_Bees) # Make it into a dataframe
+#Klamath_Mountains_Bees$ecoregion <- 'Klamath_Mountains' # Give the ecoregion a name
+#Klamath_Mountains_Bees$weighted_value <- 1 # Create a value as a place holder just to say 'Hey this is 1 bee'
+#Klamath_df <- as.data.frame(Klamath_Mountains_Bees) # Make it into a dataframe
 
-melted_data <- melt(Klamath_df, id = c(names(Klamath_df))) # Melt the data frame so we can reshape it
+#melted_data <- melt(Klamath_df, id = c(names(Klamath_df))) # Melt the data frame so we can reshape it
 
-site_reshaped <- reshape::cast(melted_data, accepted_name ~ ecoregion, value = 'weighted_value') # Reshape it 
+#site_reshaped <- reshape::cast(melted_data, accepted_name ~ ecoregion, value = 'weighted_value') # Reshape it 
 
 
-test <- Klamath_Mountains_Bees %>% 
-  filter(accepted_name == "Anthophora urbana") # Check it 
+#test <- Klamath_Mountains_Bees %>% 
+  #filter(accepted_name == "Anthophora urbana") # Check it 
 
 ########################
-decostand(Klamath_Mountains_Bees$accepted_name, method = "pa")
+#decostand(Klamath_Mountains_Bees$accepted_name, method = "pa")
+
+########## Cut each dataset into 10 pieces?
+interval <- function(x, cut = NULL){
+  
+  if(is.null(cut)){
+    x <- x %>% mutate(count_cut_intervals = cut_interval(year, n = 10))
+  }
+}
+
+
+
+
 
 Klamath_Mountains_Bees$ecoregion <- 'Klamath_Mountains' # Give the ecoregion a name
 Coast_Range_Bees$ecoregion <- 'Coast_Range'
@@ -275,17 +287,140 @@ Northern_Basin_and_Range_Bees$ecoregion <- 'Northern_Basin_and_Range'
 Sonoran_Desert_Bees$ecoregion <- 'Sonoran_Desert'
 Eastern_Cascades_Slopes_and_Foothills_Bees$ecoregion <- 'Eastern_Cascades_Slopes_and_Foothills'
 
+#Coast_Range_Bees_c <- interval(Coast_Range_Bees)
+
+Klamath_Mountains_Bees_c <- Klamath_Mountains_Bees %>% 
+  mutate(year_intervals = cut_interval(year, n = 10))
+
+Coast_Range_Bees_c <- Coast_Range_Bees %>% 
+  mutate(year_intervals = cut_interval(year, n = 10))
+
+Mojave_Basin_and_Range_Bees_c <- Mojave_Basin_and_Range_Bees %>% 
+  mutate(year_intervals = cut_interval(year, n = 10))
+
+Central_Basin_and_Range_Bees_c <- Central_Basin_and_Range_Bees %>% 
+  mutate(year_intervals = cut_interval(year, n = 10))
+
+Cascades_Bees_c <- Cascades_Bees %>% 
+  mutate(year_intervals = cut_interval(year, n = 10))
+
+Sierra_Nevadas_Bees_c <- Sierra_Nevadas_Bees %>% 
+  mutate(year_intervals = cut_interval(year, n = 10))
+
+Cali_Coastal_Sage_Chap_Oak_Woodlands_Bees_c <- Cali_Coastal_Sage_Chap_Oak_Woodlands_Bees %>% 
+  mutate(year_intervals = cut_interval(year, n = 10))
+
+Central_Cali_Valley_Bees_c <- Central_Cali_Valley_Bees %>% 
+  mutate(year_intervals = cut_interval(year, n = 10))
+
+Southern_and_Baja_Cali_PineOak_Mounts_Bees_c <- Southern_and_Baja_Cali_PineOak_Mounts_Bees %>% 
+  mutate(year_intervals = cut_interval(year, n = 10))
+
+Northern_Basin_and_Range_Bees_c <- Northern_Basin_and_Range_Bees %>% 
+  mutate(year_intervals = cut_interval(year, n = 10))
+
+Sonoran_Desert_Bees_c <- Sonoran_Desert_Bees %>% 
+  mutate(year_intervals = cut_interval(year, n = 10))
+
+Eastern_Cascades_Slopes_and_Foothills_Bees_c <- Eastern_Cascades_Slopes_and_Foothills_Bees %>% 
+  mutate(year_intervals = cut_interval(year, n = 10))
+
+combined_ecoregions_c <- rbind(Coast_Range_Bees_c,Central_Basin_and_Range_Bees_c,Mojave_Basin_and_Range_Bees_c,Cascades_Bees_c,Sierra_Nevadas_Bees_c,Cali_Coastal_Sage_Chap_Oak_Woodlands_Bees_c, Central_Cali_Valley_Bees_c, Southern_and_Baja_Cali_PineOak_Mounts_Bees_c,Northern_Basin_and_Range_Bees_c, Sonoran_Desert_Bees_c, Klamath_Mountains_Bees_c,Eastern_Cascades_Slopes_and_Foothills_Bees_c)
 combined_ecoregions <- rbind(Coast_Range_Bees,Central_Basin_and_Range_Bees,Mojave_Basin_and_Range_Bees,Cascades_Bees,Sierra_Nevadas_Bees,Cali_Coastal_Sage_Chap_Oak_Woodlands_Bees, Central_Cali_Valley_Bees, Southern_and_Baja_Cali_PineOak_Mounts_Bees,Northern_Basin_and_Range_Bees, Sonoran_Desert_Bees, Klamath_Mountains_Bees,Eastern_Cascades_Slopes_and_Foothills_Bees)
 
-combined_ecoregions$weighted_value <- 1
+#combined_ecoregions$weighted_value <- 1
 # Now lets use Reshape!?
-melted_bees <- melt(combined_ecoregions, id = c(names(combined_ecoregions)))
+#melted_bees <- melt(combined_ecoregions, id = c(names(combined_ecoregions)))
 
-combined_ecoregions2 <- combined_ecoregions %>% 
-  st_drop_geometry()
+#combined_ecoregions2 <- combined_ecoregions %>% 
+  #st_drop_geometry()
 
-site_reshaped <- reshape::cast(combined_ecoregions, accepted_name ~ ecoregion, value = 'weighted_value') # Reshape it
+#site_reshaped <- reshape::cast(combined_ecoregions, accepted_name ~ ecoregion, value = 'weighted_value') # Reshape it
 ```
+
+
+```{r}
+# Utilizing tidyverse to create a species incidence table
+
+
+
+################## Works, but formatting is rough ########
+table_test <- combined_ecoregions_c %>% 
+  mutate(sample_weight = 1) %>% 
+  group_by(ecoregion, accepted_name) %>% 
+  add_tally(sample_weight) %>% 
+  pivot_wider(names_from = ecoregion, values_from = n)
+
+
+table_test2 <- combined_ecoregions_c %>% 
+  mutate(sample_weight = 1) %>% 
+  group_by(ecoregion, accepted_name) %>% 
+  replace_na(list(x = 0)) %>% 
+  pivot_wider(names_from = ecoregion, values_from = sample_weight )
+
+combined_ecoregions_test <- combined_ecoregions_c
+
+combined_ecoregions_test$accepted_name <- as.factor(combined_ecoregions_test$accepted_name)
+
+table_test3 <- combined_ecoregions_test %>% 
+  group_by(ecoregion) %>% 
+  tally(accepted_name)
+############################### This line of code makes it where we have equal sizes of species for each ecoregion. The Output is NA however when that species is not present.###########
+table_test3 <- combined_ecoregions_test %>% 
+  complete(ecoregion, accepted_name, fill = list(count = 0))
+
+test <- combined_ecoregions_test %>% 
+  filter(ecoregion == "Cali_Coastal_Sage_Chap_Oak_Woodlands") %>% 
+  filter(accepted_name == "Andrena sperryi")
+#############################
+table_test2 <- combined_ecoregions_c %>% 
+  tally(group_by(accepted_name))
+#####################################################
+check <- combined_ecoregions_c %>% 
+  filter(ecoregion == "Coast_Range") %>% 
+  filter(accepted_name == "Bombus occidentalis")
+
+
+combined_ecoregions_c_table <- combined_ecoregions_c %>% 
+  group_by(ecoregion, accepted_name) %>% 
+  add_tally(accepted_name) %>% 
+  mutate(species_count = n) %>% 
+  select(-n)
+
+Ecoregions_pivoted <- combined_ecoregions_c_table %>% 
+  #mutate(row = row_number()) %>% 
+  #separate_rows() %>% 
+  #select(ecoregion, accepted_name, row) %>% 
+  pivot_wider(names_from = ecoregion, values_from = species_count)
+
+# Sum up sampling events into their own singular column
+combined_ecoregions_c_table_sampling_events <- combined_ecoregions_c_table %>% 
+  group_by(ecoregion, year_intervals) %>% 
+  add_count(year_intervals) %>% 
+  mutate(sampling_count = n) %>% 
+  select(-n)
+
+# Pivot wider
+Ecoregions_pivoted <- combined_ecoregions_c_table_sampling_events %>% 
+  mutate(row = row_number()) %>% 
+  separate_rows() %>% 
+  #select(ecoregion, accepted_name, row) %>% 
+  pivot_wider(names_from = ecoregion, values_from = sampling_count)
+  
+
+
+#pivot_wider(names_from = ecoregion, values_from = accepted_name)
+
+## Check
+check <- combined_ecoregions_c %>% 
+  filter(ecoregion == "Coast_Range") %>% 
+  filter(accepted_name == "Bombus occidentalis") %>% 
+  filter(year_intervals == '(1.91e+03,1.92e+03]')
+```
+
+
+
+
 
 ```{r}
 ##### Example on getting the data into incidence_raw format provided by iNEXT
