@@ -307,6 +307,9 @@ Cascades_Bees_c <- Cascades_Bees %>%
 Sierra_Nevadas_Bees_c <- Sierra_Nevadas_Bees %>% 
   mutate(year_intervals = cut_interval(year, n = 10))
 
+Sierra_Nevada_Cut <- Sierra_Nevadas_Bees_c %>% 
+  filter(year_intervals == "[1.89e+03,1.91e+03]")
+
 Cali_Coastal_Sage_Chap_Oak_Woodlands_Bees_c <- Cali_Coastal_Sage_Chap_Oak_Woodlands_Bees %>% 
   mutate(year_intervals = cut_interval(year, n = 10))
 
@@ -342,80 +345,267 @@ combined_ecoregions <- rbind(Coast_Range_Bees,Central_Basin_and_Range_Bees,Mojav
 ```{r}
 # Utilizing tidyverse to create a species incidence table
 
-
-
-################## Works, but formatting is rough ########
-table_test <- combined_ecoregions_c %>% 
-  mutate(sample_weight = 1) %>% 
-  group_by(ecoregion, accepted_name) %>% 
-  add_tally(sample_weight) %>% 
-  pivot_wider(names_from = ecoregion, values_from = n)
-
-
-table_test2 <- combined_ecoregions_c %>% 
-  mutate(sample_weight = 1) %>% 
-  group_by(ecoregion, accepted_name) %>% 
-  replace_na(list(x = 0)) %>% 
-  pivot_wider(names_from = ecoregion, values_from = sample_weight )
-
 combined_ecoregions_test <- combined_ecoregions_c
 
-combined_ecoregions_test$accepted_name <- as.factor(combined_ecoregions_test$accepted_name)
+########## 4/1 ################
+table_complete_species <- combined_ecoregions_test %>% 
+  complete(ecoregion, accepted_name, fill = list(count = 0)) %>% 
+  mutate(row = row_number())
 
-table_test3 <- combined_ecoregions_test %>% 
-  group_by(ecoregion) %>% 
-  tally(accepted_name)
-############################### This line of code makes it where we have equal sizes of species for each ecoregion. The Output is NA however when that species is not present.###########
-table_test3 <- combined_ecoregions_test %>% 
-  complete(ecoregion, accepted_name, fill = list(count = 0))
+table_complete <- table_complete_species %>% 
+  mutate(presence = case_when(is.na(decimalLatitude) ~ 0, TRUE ~ 1)) 
+
+ex1 <- table_complete %>% 
+  pivot_wider(names_from = ecoregion, values_from = presence)
+
+#### BRUTE FORCE METHOD ###################################
+table_complete_cascades <- table_complete %>% # 1
+  filter(ecoregion == "Cascades") %>% 
+  pivot_wider(names_from = ecoregion, values_from = presence) %>% 
+  select(Cascades, accepted_name) %>%
+  group_by(accepted_name, Cascades) %>% 
+  mutate(Cascades = sum(Cascades)) %>% 
+  distinct(accepted_name, .keep_all = TRUE)
 
 test <- combined_ecoregions_test %>% 
-  filter(ecoregion == "Cali_Coastal_Sage_Chap_Oak_Woodlands") %>% 
-  filter(accepted_name == "Andrena sperryi")
-#############################
-table_test2 <- combined_ecoregions_c %>% 
-  tally(group_by(accepted_name))
-#####################################################
-check <- combined_ecoregions_c %>% 
+  filter(ecoregion == "Cascades") %>% 
+  filter(accepted_name == "Agapostemon texanus") # Check works
+
+table_complete_coast_range <- table_complete %>% # 2
   filter(ecoregion == "Coast_Range") %>% 
-  filter(accepted_name == "Bombus occidentalis")
+  pivot_wider(names_from = ecoregion, values_from = presence) %>% 
+  select(Coast_Range, accepted_name) %>% 
+  group_by(accepted_name, Coast_Range) %>% 
+  mutate(Coast_Range = sum(Coast_Range)) %>% 
+  distinct(accepted_name, .keep_all = TRUE)
+  
+table_complete_Central_Basin_and_Range <- table_complete %>% # 3
+  filter(ecoregion == "Central_Basin_and_Range") %>% 
+  pivot_wider(names_from = ecoregion, values_from = presence) %>% 
+  select(Central_Basin_and_Range, accepted_name) %>% 
+  group_by(accepted_name, Central_Basin_and_Range) %>% 
+  mutate(Central_Basin_and_Range = sum(Central_Basin_and_Range)) %>% 
+  distinct(accepted_name, .keep_all = TRUE)
+
+table_complete_Mojave_Basin_and_Range <- table_complete %>% # 4
+  filter(ecoregion == "Mojave_Basin_and_Range") %>% 
+  pivot_wider(names_from = ecoregion, values_from = presence) %>% 
+  select(Mojave_Basin_and_Range, accepted_name) %>% 
+  group_by(accepted_name, Mojave_Basin_and_Range) %>% 
+  mutate(Mojave_Basin_and_Range = sum(Mojave_Basin_and_Range)) %>% 
+  distinct(accepted_name, .keep_all = TRUE)
+
+table_complete_Sierra_Nevadas <- table_complete %>% # 5
+  filter(ecoregion == "Sierra_Nevadas") %>% 
+  pivot_wider(names_from = ecoregion, values_from = presence) %>% 
+  select(Sierra_Nevadas, accepted_name) %>% 
+  group_by(accepted_name, Sierra_Nevadas) %>% 
+  mutate(Sierra_Nevadas = sum(Sierra_Nevadas)) %>% 
+  distinct(accepted_name, .keep_all = TRUE)
+
+table_complete_Cali_Coastal_Sage_Chap_Oak_Woodlands <- table_complete %>% # 6
+  filter(ecoregion == "Cali_Coastal_Sage_Chap_Oak_Woodlands") %>% 
+  pivot_wider(names_from = ecoregion, values_from = presence) %>% 
+  select(Cali_Coastal_Sage_Chap_Oak_Woodlands, accepted_name) %>% 
+  group_by(accepted_name, Cali_Coastal_Sage_Chap_Oak_Woodlands) %>%   mutate(Cali_Coastal_Sage_Chap_Oak_Woodlands = sum(Cali_Coastal_Sage_Chap_Oak_Woodlands)) %>% 
+  distinct(accepted_name, .keep_all = TRUE)
+
+table_complete_Central_Cali_Valley <- table_complete %>% # 7
+  filter(ecoregion == "Central_Cali_Valley") %>% 
+  pivot_wider(names_from = ecoregion, values_from = presence) %>% 
+  select(Central_Cali_Valley, accepted_name) %>% 
+  group_by(accepted_name, Central_Cali_Valley) %>% 
+  mutate(Central_Cali_Valley = sum(Central_Cali_Valley)) %>% 
+  distinct(accepted_name, .keep_all = TRUE)
+
+table_complete_Southern_and_Baja_Cali_PineOak_Mounts <- table_complete %>% # 8
+  filter(ecoregion == "Southern_and_Baja_Cali_PineOak_Mounts") %>% 
+  pivot_wider(names_from = ecoregion, values_from = presence) %>% 
+  select(Southern_and_Baja_Cali_PineOak_Mounts, accepted_name) %>% 
+  group_by(accepted_name, Southern_and_Baja_Cali_PineOak_Mounts) %>% 
+  mutate(Southern_and_Baja_Cali_PineOak_Mounts = sum(Southern_and_Baja_Cali_PineOak_Mounts)) %>% 
+  distinct(accepted_name, .keep_all = TRUE)
+
+table_complete_Northern_Basin_and_Range <- table_complete %>% # 9 
+  filter(ecoregion == "Northern_Basin_and_Range") %>% 
+  pivot_wider(names_from = ecoregion, values_from = presence) %>% 
+  select(Northern_Basin_and_Range, accepted_name) %>% 
+  group_by(accepted_name, Northern_Basin_and_Range) %>% 
+  mutate(Northern_Basin_and_Range = sum(Northern_Basin_and_Range)) %>% 
+  distinct(accepted_name, .keep_all = TRUE)
+
+table_complete_Sonoran_Desert <- table_complete %>% # 10
+  filter(ecoregion == "Sonoran_Desert") %>% 
+  pivot_wider(names_from = ecoregion, values_from = presence) %>% 
+  select(Sonoran_Desert, accepted_name) %>% 
+  group_by(accepted_name, Sonoran_Desert) %>% 
+  mutate(Sonoran_Desert = sum(Sonoran_Desert)) %>% 
+  distinct(accepted_name, .keep_all = TRUE)
+
+table_complete_Klamath_Mountains <- table_complete %>% # 11
+  filter(ecoregion == "Klamath_Mountains") %>% 
+  pivot_wider(names_from = ecoregion, values_from = presence) %>% 
+  select(Klamath_Mountains, accepted_name) %>% 
+  group_by(accepted_name, Klamath_Mountains) %>% 
+  mutate(Klamath_Mountains = sum(Klamath_Mountains)) %>% 
+  distinct(accepted_name, .keep_all = TRUE)
+
+table_complete_Eastern_Cascades_Slopes_and_Foothills <- table_complete %>% # 12
+  filter(ecoregion == "Eastern_Cascades_Slopes_and_Foothills") %>% 
+  pivot_wider(names_from = ecoregion, values_from = presence) %>% 
+  select(Eastern_Cascades_Slopes_and_Foothills, accepted_name) %>% 
+  group_by(accepted_name, Eastern_Cascades_Slopes_and_Foothills) %>% 
+  mutate(Eastern_Cascades_Slopes_and_Foothills = sum(Eastern_Cascades_Slopes_and_Foothills)) %>% 
+  distinct(accepted_name, .keep_all = TRUE)
+
+Incidence_Table <- cbind(table_complete_coast_range, table_complete_Central_Basin_and_Range,
+table_complete_Mojave_Basin_and_Range,
+table_complete_cascades,
+table_complete_Sierra_Nevadas,
+table_complete_Cali_Coastal_Sage_Chap_Oak_Woodlands,
+table_complete_Central_Cali_Valley,
+table_complete_Southern_and_Baja_Cali_PineOak_Mounts,
+table_complete_Northern_Basin_and_Range,
+table_complete_Sonoran_Desert,
+table_complete_Klamath_Mountains, 
+table_complete_Eastern_Cascades_Slopes_and_Foothills )
+
+Incidence_Table2 <- Incidence_Table %>% 
+  select(accepted_name...2, Coast_Range, Central_Basin_and_Range, Mojave_Basin_and_Range, Cascades, Sierra_Nevadas, Cali_Coastal_Sage_Chap_Oak_Woodlands, Central_Cali_Valley, Southern_and_Baja_Cali_PineOak_Mounts,Northern_Basin_and_Range, Sonoran_Desert, Klamath_Mountains, Eastern_Cascades_Slopes_and_Foothills)
+
+test <- combined_ecoregions_c %>% 
+  filter(ecoregion == "Eastern_Cascades_Slopes_and_Foothills") %>% 
+  filter(accepted_name == "Agapostemon angelicus")
+
+```
 
 
-combined_ecoregions_c_table <- combined_ecoregions_c %>% 
-  group_by(ecoregion, accepted_name) %>% 
-  add_tally(accepted_name) %>% 
-  mutate(species_count = n) %>% 
-  select(-n)
+### Now we need to figure out sampling units and add them to the Incidence Table
+```{r eval=FALSE, include=FALSE}
+# To do this lets take each ecoregion and figure out what an appropriate binning would be 
+combined_ecoregions_c %>% 
+  filter(ecoregion == "Coast_Range") %>% 
+  summarize(count_distinct = n_distinct(year))
+# 113 years
 
-Ecoregions_pivoted <- combined_ecoregions_c_table %>% 
-  #mutate(row = row_number()) %>% 
-  #separate_rows() %>% 
-  #select(ecoregion, accepted_name, row) %>% 
-  pivot_wider(names_from = ecoregion, values_from = species_count)
+combined_ecoregions_c %>% 
+  filter(ecoregion == "Cascades") %>% 
+  summarize(count_distinct = n_distinct(year))
+# 86 years
 
-# Sum up sampling events into their own singular column
-combined_ecoregions_c_table_sampling_events <- combined_ecoregions_c_table %>% 
-  group_by(ecoregion, year_intervals) %>% 
-  add_count(year_intervals) %>% 
-  mutate(sampling_count = n) %>% 
-  select(-n)
+combined_ecoregions_c %>% 
+  filter(ecoregion == "Central_Basin_and_Range") %>% 
+  summarize(count_distinct = n_distinct(year))
+# 98 years
+combined_ecoregions_c %>% 
+  filter(ecoregion == "Mojave_Basin_and_Range") %>% 
+  summarize(count_distinct = n_distinct(year))
+# 104 years
+combined_ecoregions_c %>% 
+  filter(ecoregion == "Sierra_Nevadas") %>% 
+  summarize(count_distinct = n_distinct(year))
+# 122 years
+combined_ecoregions_c %>% 
+  filter(ecoregion == "Cali_Coastal_Sage_Chap_Oak_Woodlands") %>% 
+  summarize(count_distinct = n_distinct(year))
+# 137 Years
+combined_ecoregions_c %>% 
+  filter(ecoregion == "Central_Cali_Valley") %>% 
+  summarize(count_distinct = n_distinct(year))
+# 113 Years
+combined_ecoregions_c %>% 
+  filter(ecoregion == "Southern_and_Baja_Cali_PineOak_Mounts") %>% 
+  summarize(count_distinct = n_distinct(year))
+# 114 Years
+combined_ecoregions_c %>% 
+  filter(ecoregion == "Northern_Basin_and_Range") %>% 
+  summarize(count_distinct = n_distinct(year))
+# 21 years
+combined_ecoregions_c %>% 
+  filter(ecoregion == "Sonoran_Desert") %>% 
+  summarize(count_distinct = n_distinct(year))
+# 103 years
+combined_ecoregions_c %>% 
+  filter(ecoregion == "Klamath_Mountains") %>% 
+  summarize(count_distinct = n_distinct(year))
+# 101 years
+combined_ecoregions_c %>% 
+  filter(ecoregion == "Eastern_Cascades_Slopes_and_Foothills") %>% 
+  summarize(count_distinct = n_distinct(year))
 
-# Pivot wider
-Ecoregions_pivoted <- combined_ecoregions_c_table_sampling_events %>% 
-  mutate(row = row_number()) %>% 
-  separate_rows() %>% 
-  #select(ecoregion, accepted_name, row) %>% 
-  pivot_wider(names_from = ecoregion, values_from = sampling_count)
+# 78 years
+
+
+```
+### Making an abritrary number of sampling events
+```{r}
+# Lets say that every 100 bees = 1 sampling event per ecoregion
+combined_ecoregions_c %>% 
+  filter(ecoregion == "Coast_Range") %>% 
+  nrow()/100
+# 98.51 = 98 sampling events
   
 
+combined_ecoregions_c %>% 
+  filter(ecoregion == "Cascades") %>%
+  nrow()/100
+# 32.01 = 32 sampling events
 
-#pivot_wider(names_from = ecoregion, values_from = accepted_name)
 
-## Check
-check <- combined_ecoregions_c %>% 
-  filter(ecoregion == "Coast_Range") %>% 
-  filter(accepted_name == "Bombus occidentalis") %>% 
-  filter(year_intervals == '(1.91e+03,1.92e+03]')
+combined_ecoregions_c %>% 
+  filter(ecoregion == "Central_Basin_and_Range") %>% 
+  nrow()/100
+# 141.45 = 141 sampling events
+
+combined_ecoregions_c %>% 
+  filter(ecoregion == "Mojave_Basin_and_Range") %>% 
+  nrow()/100
+#446.99 = 446 sampling events
+
+combined_ecoregions_c %>% 
+  filter(ecoregion == "Sierra_Nevadas") %>% 
+  nrow()/100
+# 581.03 = 581 sampling events
+
+combined_ecoregions_c %>% 
+  filter(ecoregion == "Cali_Coastal_Sage_Chap_Oak_Woodlands") %>% 
+  nrow()/100
+# 1301 sampling events
+
+combined_ecoregions_c %>% 
+  filter(ecoregion == "Central_Cali_Valley") %>% 
+  nrow()/100
+# 120.84 = 120 sampling events
+
+combined_ecoregions_c %>% 
+  filter(ecoregion == "Southern_and_Baja_Cali_PineOak_Mounts") %>% 
+  nrow()/100
+# 124.65 = 124 sampling events
+
+combined_ecoregions_c %>% 
+  filter(ecoregion == "Northern_Basin_and_Range") %>% 
+  nrow()/100
+# 2.86 = 2 sampling events
+
+combined_ecoregions_c %>% 
+  filter(ecoregion == "Sonoran_Desert") %>% 
+  nrow()/100
+# 109.67 = 109 sampling events
+
+combined_ecoregions_c %>% 
+  filter(ecoregion == "Klamath_Mountains") %>% 
+  nrow()/100
+# 40.67 = 40 sampling events
+
+combined_ecoregions_c %>% 
+  filter(ecoregion == "Eastern_Cascades_Slopes_and_Foothills") %>% 
+  nrow()/100
+# 20.57 = 20 sampling events
+
+
+### adding this to the incidence table
+
+Incidence_Table3 <- Incidence_Table2[nrow(Incidence_Table2) + 1,] = c("Sampling Units", )
 ```
 
 
