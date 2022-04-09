@@ -1,0 +1,400 @@
+---
+title: "Ecoregion_Rarefaction"
+author: "JT Miller"
+date: "4/8/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## The purpose of this markdown is to create datasets for the analysis of the ecoregions. To do this:
+1) Data from GBIF pull and AMNH will be read, cleaned, and combined into one dataset
+2) The Taxize and left join will be used to resolve and replace errenous names
+3) The resulting dataset will then be parsed out by each ecoregion and wrote to its own .csv
+
+## Necessary Libraries
+```{r}
+library(sf)
+library(tidyverse)
+library(taxize)
+library(leaflet)
+library(sqldf)
+library(iNEXT)
+```
+
+
+
+## 1. Data pull from GBIF and AMNH
+```{r}
+# Read in the data from GBIF
+specimen_data <- read.delim(file="D:/CCBER/Occurrence_Maps/Bee_diversity_research/Data/bee_catalogued.txt",header=TRUE)
+
+# Remove data that does not have an associated genus or specificEpithet
+specimen_complete <- specimen_data %>% 
+  filter(!(genus == "")) %>% 
+  filter(!(specificEpithet == ""))
+
+# Unite the genus and specificEpithet column to give a scientific name
+specimen_data_SN  <- specimen_complete %>% 
+  unite(scientific_name, genus, specificEpithet, sep = " ")
+
+# Remove any empty occurrenceIDs and keep only distinct values
+specimen_occur_IDed <- specimen_data_SN %>%
+  dplyr::filter(!(occurrenceID == "")) %>% 
+  dplyr::distinct(occurrenceID, .keep_all = TRUE)
+
+# Remove any empty catalogeNumbers and keep only distinct values
+specimen_occur_IDed_CatalogNumbered <- specimen_occur_IDed %>% 
+  dplyr::filter(!(catalogNumber == "")) %>% 
+  dplyr::distinct(catalogNumber, .keep_all = TRUE)
+
+# Read in the data from AMNH
+AMNH_specimens <- read.delim(file = "D:/CCBER/Occurrence_Maps/Bee_diversity_research/Data/AMNH_occurrences.tab", header = TRUE)
+
+# Check
+AMNH_specimens_t <- AMNH_specimens %>% 
+  distinct(occurrenceID, .keep_all = TRUE) # These are equivalent, therefore no cleaning is needed on this dataset
+
+# Filter out any empty values for the same fields as the GBIF pull, and keep only distinct values for OccurID and CatalogNumber
+AMNH_specimens_complete <- AMNH_specimens %>%
+  filter(!(genus == "")) %>% 
+  filter(!(specificEpithet == "")) %>% 
+  dplyr::filter(!(occurrenceID == "")) %>% 
+  dplyr::distinct(occurrenceID, .keep_all = TRUE) %>% 
+  dplyr::filter(!(catalogNumber == "")) %>% 
+  dplyr::distinct(catalogNumber, .keep_all = TRUE)
+
+# Create a scientific name column
+AMNH_specimens_data_SN_complete  <- AMNH_specimens_complete %>% 
+  unite(scientific_name, genus, specificEpithet, sep = " ")
+
+# Remove any columns that aren't comparable between the two datasets
+AMNH_specimens_simplified <- AMNH_specimens_data_SN_complete %>% 
+  select(institutionCode, basisOfRecord,occurrenceID, catalogNumber, eventDate, year, month, day, decimalLatitude, decimalLongitude, georeferenceVerificationStatus, scientificName, kingdom, phylum, class, order, family, scientific_name, subgenus)
+
+specimen_occur_less<- specimen_occur_IDed_CatalogNumbered %>% 
+  select(!institutionID)
+
+combined_datasets_totals <- rbind(specimen_occur_less, AMNH_specimens_simplified) 
+
+# NOTE: catalogNumber was again more inclusive, therefore the distinct was ran on it. 
+
+combined_datasets_distinct_catalogNumber <- combined_datasets_totals %>% 
+  dplyr::distinct(catalogNumber, .keep_all = TRUE) 
+```
+
+### 2. Taxize the data and Left join to find and replace taxonomic mistakes.
+```{r}
+# Make a variable that stores the sources that can be used in the global names database
+sources <- gnr_datasources()
+
+# Subset out the sources variable to only include the id for the Discover Life Bee Species Guide, set that to the variable 'Get_Disc_Life'
+Get_Disc_Life <- sources$id[sources$title == 'Discover Life Bee Species Guide']
+
+# Do the same thing but add ITIS as a second id
+Get_Disc_Life_ITIS <- c(sources$id[sources$title == 'Discover Life Bee Species Guide'], sources$id[sources$title == 'Integrated Taxonomic Information SystemITIS'])
+
+# 
+unique_names <- combined_datasets_distinct_catalogNumber %>% 
+  distinct(scientific_name, .keep_all = TRUE)
+
+# Find the Corrected Names, use gnr_resolve to look at scientific name column and give resolved names based on the preferred source of Discover Life, and secondarily ITIS. Then change the scientific name to only include genus and specific Epithet using canonical = TRUE. 
+Corrected_Names <- gnr_resolve(sci = unique_names$scientific_name, data_source_ids = Get_Disc_Life_ITIS, preferred_data_sources = Get_Disc_Life, resolve_once = TRUE, canonical = TRUE)
+
+# Take Corrected_Names and remove any values for ____ that are 0.750 or below
+Corrected_Names_r <- Corrected_Names %>% 
+  filter(!(score == 0.750)) # Loses 38 Names that we are not confident in.
+
+# Use a left join SQL query to correct the names in our dataset (THIS NEEDS TO BE UPDATED)
+#  
+left_joined_specimens <- sqldf("SELECT DISTINCT dataset.*, real_name_map.accepted_name
+FROM combined_datasets_distinct_catalogNumber dataset 
+LEFT JOIN (SELECT DISTINCT sub_dataset.scientific_name, MAX(sub_real_names.matched_name2) accepted_name
+    FROM combined_datasets_distinct_catalogNumber sub_dataset
+    LEFT JOIN Corrected_Names_r sub_real_names ON sub_dataset.scientific_name = sub_real_names.user_supplied_name
+    GROUP BY sub_dataset.scientific_name) real_name_map ON dataset.scientific_name = real_name_map.accepted_name")
+
+
+left_joined_specimens_dropped <- left_joined_specimens %>% 
+  filter(!(is.na(accepted_name)))
+
+```
+
+
+### 3. The resulting dataset must be changed in a spatial type file and then parsed out to each ecoregion respectively. These Ecoregion Datasets will then be written to their own .csv files. 
+```{r}
+# Bring in 3rd level of Ecoregions by the EPA
+eco_map <- sf::read_sf("filter_polygon/cali_ecoregions_3/ca_eco_l3.shp") %>% 
+  sf::st_transform('+proj=longlat +datum=WGS84') 
+
+colpal <- colorFactor(c("#00EDF4", "#F40000", "#D58400", "#139715", "#3740AE"), eco_map$L2_KEY)
+
+colpal_ext <- colorFactor(c("#a6cee3", "#1f78b4", "#b2df8a", "#33a02c", "#fb9a99", "#e31a1c", "#fdbf6f", "#ff7f00", "#cab2d6", "#6a3d9a", "#ffff99", "#b15928"), eco_map$NA_L3NAME)
+
+leaflet(eco_map) %>%
+  addPolygons(stroke = FALSE, smoothFactor = 0.2, fillOpacity = 1,
+              color = ~colpal_ext(NA_L3NAME)) %>% 
+   addProviderTiles("Esri.WorldGrayCanvas") %>% 
+  addLegend("bottomright", pal = colpal_ext, values = eco_map$NA_L3NAME)
+
+# Remove anything without a lat lon coordinate 
+bees_w_coords <- left_joined_specimens_dropped %>% 
+  dplyr::filter(!is.na(decimalLatitude)|!is.na(decimalLongitude)) %>% 
+  dplyr::filter(!(decimalLongitude == "")) %>% 
+  dplyr::filter(!(decimalLatitude == ""))
+
+bees_w_coords_w_crs <- st_as_sf(bees_w_coords, coords = c('decimalLongitude', 'decimalLatitude'), crs = 4326)
+
+bees_bounded <- bees_w_coords_w_crs[eco_map,]
+
+bees_bounded_sep <- bees_bounded %>%
+  dplyr::mutate(decimalLatitude = sf::st_coordinates(.)[,2],
+                decimalLongitude = sf::st_coordinates(.)[,1])
+
+
+
+```
+
+```{r}
+### Parsing out the shapefiles 
+
+#Seperating out the shapefile by ecoregions lvl 3
+Coast_Range <- eco_map[1,]
+Central_Basin_and_Range <- eco_map[2,]
+Mojave_Basin_and_Range <- eco_map[3,]
+Cascades <- eco_map[4,]
+Sierra_Nevadas <- eco_map[5,]
+Cali_Coastal_Sage_Chap_Oak_Woodlands1 <- eco_map[6,]
+Central_Cali_Valley <- eco_map[7,]
+Klamath_Mountains <- eco_map[8,]
+Southern_and_Baja_Cali_PineOak_Mounts <- eco_map[9,]
+Northern_Basin_and_Range <- eco_map[10,]
+Sonoran_Desert <- eco_map[11,]
+Cali_Coastal_Sage_Chap_Oak_Woodlands2 <- eco_map[12,]
+Eastern_Cascades_Slopes_and_Foothills <- eco_map[13,]
+
+# Subset the bees out by each of the ecoregion shapefiles
+Coast_Range_Bees <- bees_bounded_sep[Coast_Range,]
+Central_Basin_and_Range_Bees <- bees_bounded_sep[Central_Basin_and_Range,]
+Mojave_Basin_and_Range_Bees <- bees_bounded_sep[Mojave_Basin_and_Range,]
+Cascades_Bees <- bees_bounded_sep[Cascades,]
+Sierra_Nevadas_Bees <- bees_bounded_sep[Sierra_Nevadas,]
+Cali_Coastal_Sage_Chap_Oak_Woodlands1_Bees <- bees_bounded_sep[Cali_Coastal_Sage_Chap_Oak_Woodlands1,]
+Central_Cali_Valley_Bees <- bees_bounded_sep[Central_Cali_Valley,]
+Klamath_Mountains_Bees <- bees_bounded_sep[Klamath_Mountains,]
+Southern_and_Baja_Cali_PineOak_Mounts_Bees <- bees_bounded_sep[Southern_and_Baja_Cali_PineOak_Mounts,]
+Northern_Basin_and_Range_Bees <- bees_bounded_sep[Northern_Basin_and_Range,]
+Sonoran_Desert_Bees <- bees_bounded_sep[Sonoran_Desert,]
+Cali_Coastal_Sage_Chap_Oak_Woodlands2_Bees <- bees_bounded_sep[Cali_Coastal_Sage_Chap_Oak_Woodlands2,]
+Eastern_Cascades_Slopes_and_Foothills_Bees <- bees_bounded_sep[Eastern_Cascades_Slopes_and_Foothills,]
+
+#combining the Sage Chap Woodland regions since they are the same (?)
+Cali_Coastal_Sage_Chap_Oak_Woodlands_Bees <- rbind(Cali_Coastal_Sage_Chap_Oak_Woodlands1_Bees, Cali_Coastal_Sage_Chap_Oak_Woodlands2_Bees)
+
+
+```
+
+# Write the Regions to their own .csv files 
+```{r eval=FALSE, include=FALSE}
+st_write(Coast_Range_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/EcoRegion_Bees/Coast_Range_Bees.csv",  layer_options = "GEOMETRY=AS_WKT")
+
+st_write(Central_Basin_and_Range_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/EcoRegion_Bees/Central_Basin_and_Range_Bees.csv",  layer_options = "GEOMETRY=AS_WKT")
+
+st_write(Mojave_Basin_and_Range_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/EcoRegion_Bees/Mojave_Basin_and_Range_Bees.csv",  layer_options = "GEOMETRY=AS_WKT")
+
+st_write(Cascades_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/EcoRegion_Bees/Cascades_Bees.csv",  layer_options = "GEOMETRY=AS_WKT")
+
+st_write(Sierra_Nevadas_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/EcoRegion_Bees/Sierra_Nevadas_Bees.csv",  layer_options = "GEOMETRY=AS_WKT")
+
+st_write(Cali_Coastal_Sage_Chap_Oak_Woodlands_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/EcoRegion_Bees/Cali_Coastal_Sage_Chap_Oak_Woodlands_Bees.csv",  layer_options = "GEOMETRY=AS_WKT")
+
+st_write(Central_Cali_Valley_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/EcoRegion_Bees/Central_Cali_Valley_Bees.csv",  layer_options = "GEOMETRY=AS_WKT")
+
+st_write(Klamath_Mountains_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/EcoRegion_Bees/Klamath_Mountains_Bees.csv",  layer_options = "GEOMETRY=AS_WKT")
+
+st_write(Southern_and_Baja_Cali_PineOak_Mounts_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/EcoRegion_Bees/Southern_and_Baja_Cali_PineOak_Mounts_Bees.csv",  layer_options = "GEOMETRY=AS_WKT")
+
+st_write(Northern_Basin_and_Range_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/EcoRegion_Bees/Northern_Basin_and_Range_Bees.csv",  layer_options = "GEOMETRY=AS_WKT")
+
+st_write(Sonoran_Desert_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/EcoRegion_Bees/Sonoran_Desert_Bees.csv",  layer_options = "GEOMETRY=AS_WKT")
+
+st_write(Eastern_Cascades_Slopes_and_Foothills_Bees, "E:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/EcoRegion_Bees/Eastern_Cascades_Slopes_and_Foothills_Bees.csv",  layer_options = "GEOMETRY=AS_WKT")
+```
+
+
+```{r}
+#install.packages("vegan")
+library(vegan)
+#install.packages("reshape")
+library(reshape)
+
+#Klamath_Mountains_Bees$ecoregion <- 'Klamath_Mountains' # Give the ecoregion a name
+#Klamath_Mountains_Bees$weighted_value <- 1 # Create a value as a place holder just to say 'Hey this is 1 bee'
+#Klamath_df <- as.data.frame(Klamath_Mountains_Bees) # Make it into a dataframe
+
+#melted_data <- melt(Klamath_df, id = c(names(Klamath_df))) # Melt the data frame so we can reshape it
+
+#site_reshaped <- reshape::cast(melted_data, accepted_name ~ ecoregion, value = 'weighted_value') # Reshape it 
+
+
+#test <- Klamath_Mountains_Bees %>% 
+  #filter(accepted_name == "Anthophora urbana") # Check it 
+
+########################
+#decostand(Klamath_Mountains_Bees$accepted_name, method = "pa")
+
+########## Cut each dataset into 10 pieces?
+interval <- function(x, cut = NULL){
+  
+  if(is.null(cut)){
+    x <- x %>% mutate(count_cut_intervals = cut_interval(year, n = 10))
+  }
+}
+
+
+
+
+
+Klamath_Mountains_Bees$ecoregion <- 'Klamath_Mountains' # Give the ecoregion a name
+Coast_Range_Bees$ecoregion <- 'Coast_Range'
+Central_Basin_and_Range_Bees$ecoregion <- 'Central_Basin_and_Range'
+Mojave_Basin_and_Range_Bees$ecoregion <- 'Mojave_Basin_and_Range'
+Cascades_Bees$ecoregion <- 'Cascades'
+Sierra_Nevadas_Bees$ecoregion <- 'Sierra_Nevadas'
+Cali_Coastal_Sage_Chap_Oak_Woodlands_Bees$ecoregion <- 'Cali_Coastal_Sage_Chap_Oak_Woodlands'
+Central_Cali_Valley_Bees$ecoregion <- 'Central_Cali_Valley'
+Southern_and_Baja_Cali_PineOak_Mounts_Bees$ecoregion <- 'Southern_and_Baja_Cali_PineOak_Mounts'
+Northern_Basin_and_Range_Bees$ecoregion <- 'Northern_Basin_and_Range'
+Sonoran_Desert_Bees$ecoregion <- 'Sonoran_Desert'
+Eastern_Cascades_Slopes_and_Foothills_Bees$ecoregion <- 'Eastern_Cascades_Slopes_and_Foothills'
+
+#Coast_Range_Bees_c <- interval(Coast_Range_Bees)
+
+
+### Methodology update with help from Colleen 
+qs <- 10 # Set up our quantiles 
+
+KMB_drop <- Klamath_Mountains_Bees %>% 
+  filter(!is.na(year)) %>%  # Get rid of any bees without a year
+  st_drop_geometry() # Get rid of geometry now since it messes things up
+
+KMB <- KMB_drop[order(KMB_drop$year),]
+# order the dataframe in oldest to newest years
+
+# Set up our quantiles for each set of years
+yrs_KMB <- quantile(KMB$year, probs = seq(0,1,(1/qs)), type =2)
+
+#put the bees into time periods: loop through the quantiles and assign each row in the famnh dataframe to a time period
+KMB$bin<- NA
+
+for(i in 1:qs){
+  y<-yrs_KMB[i:(i+1)]
+  if(i == 1) KMB[KMB$year >= y[1] & KMB$year <=y[2],]$bin <- i
+  if(i != 1) KMB[KMB$year > y[1] & KMB$year <=y[2],]$bin <- i
+}
+
+# Reformatting the data, bins will be the rows and species will be the columns 
+
+KMB_mat_set <-KMB %>% group_by(bin, accepted_name) %>% 
+                          summarize(n=n()) %>% spread(accepted_name, n, fill=0)
+
+
+KMB_mat <-as.data.frame(KMB_mat_set)[,-1]
+
+# Reformat with bins as the columns and species as the rows for estimating coverage based rarefaction 
+KMB_df = data.frame(t(KMB_mat))
+
+# Getting the coverage estimates for each time period
+KMB_cov = DataInfo(KMB_df)
+range(KMB_cov$SC); mean(KMB_cov$SC)
+
+#now estiamte richness using coverage-based rarefaction
+#reformat again - make a list,of the species abundance distributions in each time period - 
+# this is the format needed for using coverage-based rarefaction
+KMB_list=lapply(KMB_df,as.vector)
+
+#run the coverage-based rarefaction
+out_KMB = estimateD(KMB_list, base="coverage",conf=NULL) 
+colnames(out_KMB) = c("Xbin","m","method","SC","rar_rich","rar_shan","rar_simp")
+
+# Using formal iNEXT documentation methods 
+
+KMB_i <- iNEXT(KMB_df, q=0, datatype="abundance")
+
+ggiNEXT(KMB_i, type=3, se=TRUE, facet.var="none", color.var="site", grey=FALSE)
+
+ChaoSpecies(KMB_df)
+
+coverager <- function(Region_Bees, manual_qs){
+  
+
+    qs <- manual_qs
+  
+
+Region_drop <- Region_Bees %>% 
+  filter(!is.na(year)) %>%  # Get rid of any bees without a year
+  st_drop_geometry() # Get rid of geometry now since it messes things up
+
+Region <- Region_drop[order(Region_drop$year),]
+# order the dataframe in oldest to newest years
+
+# Set up our quantiles for each set of years
+yrs_Region <- quantile(Region$year, probs = seq(0,1,(1/qs)), type =2)
+
+#put the bees into time periods: loop through the quantiles and assign each row in the famnh dataframe to a time period
+Region$bin<- NA
+
+for(i in 1:qs){
+  y<-yrs_Region[i:(i+1)]
+  if(i == 1) Region[Region$year >= y[1] & Region$year <=y[2],]$bin <- i
+  if(i != 1) Region[Region$year > y[1] & Region$year <=y[2],]$bin <- i
+}
+
+# Reformatting the data, bins will be the rows and species will be the columns 
+
+Region_mat_set <-Region %>% group_by(bin, accepted_name) %>% 
+                          summarize(n=n()) %>% spread(accepted_name, n, fill=0)
+
+
+Region_mat <-as.data.frame(Region_mat_set)[,-1]
+
+# Reformat with bins as the columns and species as the rows for estimating coverage based rarefaction 
+Region_df = data.frame(t(Region_mat))
+
+return(Region_df)
+}
+
+#### Coverage based rarefaction for each ecoregion
+KMB_df <- coverager(Klamath_Mountains_Bees, manual_qs = 10) # Klamath
+CRB_df <- coverager(Coast_Range_Bees, manual_qs = 10) # Coast
+MBRB_df <- coverager(Mojave_Basin_and_Range_Bees, manual_qs = 8)
+CBRB_df <- coverager(Central_Basin_and_Range_Bees, manual_qs = 7)
+CB_df <- coverager(Cascades_Bees, manual_qs = 8) # Cascades
+SNB_coverage <- coverager(Sierra_Nevadas_Bees, manual_qs = 10) # Sierra Nevadas
+CSHOB_coverage <- coverager(Cali_Coastal_Sage_Chap_Oak_Woodlands_Bees, manual_qs = 7)
+CVB <- coverager(Central_Cali_Valley_Bees) 
+SBB <- coverager(Southern_and_Baja_Cali_PineOak_Mounts_Bees, manual_qs = 10)
+NBRB <- coverager(Northern_Basin_and_Range_Bees, manual_qs = 2)
+SDB <- coverager(Sonoran_Desert_Bees, manual_qs = 10)
+ECSB <- coverager(Eastern_Cascades_Slopes_and_Foothills_Bees, manual_qs = 10)
+
+
+
+
+
+
+```
+
+
+
+
+```{r}
+combined_ecoregions_c <- rbind(Coast_Range_Bees_c,Central_Basin_and_Range_Bees_c,Mojave_Basin_and_Range_Bees_c,Cascades_Bees_c,Sierra_Nevadas_Bees_c,Cali_Coastal_Sage_Chap_Oak_Woodlands_Bees_c, Central_Cali_Valley_Bees_c, Southern_and_Baja_Cali_PineOak_Mounts_Bees_c,Northern_Basin_and_Range_Bees_c, Sonoran_Desert_Bees_c, Klamath_Mountains_Bees_c,Eastern_Cascades_Slopes_and_Foothills_Bees_c)
+
+combined_ecoregion_c_drop <- combined_ecoregions_c %>% 
+  filter(!is.na(year))
+
+combined_ecoregions <- rbind(Coast_Range_Bees,Central_Basin_and_Range_Bees,Mojave_Basin_and_Range_Bees,Cascades_Bees,Sierra_Nevadas_Bees,Cali_Coastal_Sage_Chap_Oak_Woodlands_Bees, Central_Cali_Valley_Bees, Southern_and_Baja_Cali_PineOak_Mounts_Bees,Northern_Basin_and_Range_Bees, Sonoran_Desert_Bees, Klamath_Mountains_Bees,Eastern_Cascades_Slopes_and_Foothills_Bees)
+```
