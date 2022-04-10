@@ -377,7 +377,7 @@ CRB_df <- coverager(Coast_Range_Bees, manual_qs = 10) # Coast
 MBRB_df <- coverager(Mojave_Basin_and_Range_Bees, manual_qs = 8)
 CBRB_df <- coverager(Central_Basin_and_Range_Bees, manual_qs = 7)
 CB_df <- coverager(Cascades_Bees, manual_qs = 8) # Cascades
-SNB_coverage <- coverager(Sierra_Nevadas_Bees, manual_qs = 10) # Sierra Nevadas
+SNB_df <- coverager(Sierra_Nevadas_Bees, manual_qs = 10) # Sierra Nevadas
 CSHOB_df <- coverager(Cali_Coastal_Sage_Chap_Oak_Woodlands_Bees, manual_qs = 7)
 CVB_df <- coverager(Central_Cali_Valley_Bees, manual_qs = 8) 
 SBB_df <- coverager(Southern_and_Baja_Cali_PineOak_Mounts_Bees, manual_qs = 10)
@@ -431,27 +431,320 @@ colnames(out_MBRB) = c("Xbin","m","method","SC","rar_rich","rar_shan","rar_simp"
 
 print(out_MBRB)
 
+MBRB_i <- iNEXT(MBRB_df, q=0, datatype="abundance")
+
+print(MBRB_i)
+
+ggiNEXT(MBRB_i, type=2, se=TRUE, facet.var="none", color.var="site", grey=FALSE)
+
+
 ### Seems that the Sample Coverage is 93.8%
 ```
 # Klamath 
 ```{r}
 # Getting the coverage estimates for each time period
-MBRB_coverage = DataInfo(MBRB_df)
-range(MBRB_coverage$SC); mean(MBRB_coverage$SC)
+KMB_coverage = DataInfo(KMB_df)
+range(KMB_coverage$SC); mean(KMB_coverage$SC)
 
 #now estiamte richness using coverage-based rarefaction
 #reformat again - make a list,of the species abundance distributions in each time period - 
 # this is the format needed for using coverage-based rarefaction
-MBRB_list=lapply(MBRB_df,as.vector)
+KMB_list=lapply(KMB_df,as.vector)
 
 #run the coverage-based rarefaction
-out_MBRB = estimateD(MBRB_list, base="coverage",conf=NULL) 
-colnames(out_MBRB) = c("Xbin","m","method","SC","rar_rich","rar_shan","rar_simp")
+out_KMB = estimateD(KMB_list, base="coverage",conf=NULL) 
+colnames(out_KMB) = c("Xbin","m","method","SC","rar_rich","rar_shan","rar_simp")
 
-print(out_MBRB)
+print(out_KMB)
 
-### Seems that the Sample Coverage is 93.8%
+KMB_i <- iNEXT(KMB_df, q=0, datatype="abundance")
+
+print(KMB_i)
+
+ggiNEXT(KMB_i, type=2, se=TRUE, facet.var="none", color.var="site", grey=FALSE)
+
+
+### Seems that the Sample Coverage is 86%
 ```
+# Coast Range  
+```{r}
+# Getting the coverage estimates for each time period
+CRB_coverage = DataInfo(CRB_df)
+range(CRB_coverage$SC); mean(CRB_coverage$SC)
+
+#now estiamte richness using coverage-based rarefaction
+#reformat again - make a list,of the species abundance distributions in each time period - 
+# this is the format needed for using coverage-based rarefaction
+CRB_list=lapply(CRB_df,as.vector)
+
+#run the coverage-based rarefaction
+out_CRB = estimateD(CRB_list, base="coverage",conf=NULL) 
+colnames(out_CRB) = c("Xbin","m","method","SC","rar_rich","rar_shan","rar_simp")
+
+print(out_CRB)
+
+
+CRB_i <- iNEXT(CRB_df, q=0, datatype="abundance")
+
+print(CRB_i)
+
+ggiNEXT(CRB_i, type=2, se=TRUE, facet.var="none", color.var="site", grey=FALSE)
+
+
+### Seems that the Sample Coverage is 93.5%
+```
+# Central Basin and Range 
+```{r}
+# Getting the coverage estimates for each time period
+CBRB_coverage = DataInfo(CBRB_df)
+range(CBRB_coverage$SC); mean(CBRB_coverage$SC)
+
+#now estiamte richness using coverage-based rarefaction
+#reformat again - make a list,of the species abundance distributions in each time period - 
+# this is the format needed for using coverage-based rarefaction
+CBRB_list=lapply(CBRB_df,as.vector)
+
+#run the coverage-based rarefaction
+out_CBRB = estimateD(CBRB_list, base="coverage",conf=NULL) 
+colnames(out_CBRB) = c("Xbin","m","method","SC","rar_rich","rar_shan","rar_simp")
+
+print(out_CBRB)
+
+CBRB_i <- iNEXT(CBRB_df, q=0, datatype="abundance")
+
+print(CBRB_i)
+
+ggiNEXT(CBRB_i, type=3, se=TRUE, facet.var="none", color.var="site", grey=FALSE)
+
+### Seems that the Sample Coverage is 77.5%
+```
+
+# Cascades
+```{r}
+# Getting the coverage estimates for each time period
+CB_coverage = DataInfo(CB_df)
+range(CB_coverage$SC); mean(CB_coverage$SC)
+
+#now estiamte richness using coverage-based rarefaction
+#reformat again - make a list,of the species abundance distributions in each time period - 
+# this is the format needed for using coverage-based rarefaction
+CB_list=lapply(CB_df,as.vector)
+
+#run the coverage-based rarefaction
+out_CB = estimateD(CB_list, base="coverage",conf=NULL) 
+colnames(out_CB) = c("Xbin","m","method","SC","rar_rich","rar_shan","rar_simp")
+
+print(out_CB)
+
+CB_i <- iNEXT(CB_df, q=0, datatype="abundance")
+
+print(CB_i)
+
+ggiNEXT(CB_i, type=3, se=TRUE, facet.var="none", color.var="site", grey=FALSE)
+
+### Seems that the Sample Coverage is 79.3%
+
+# It should be noted this looks to be weighted, the beginning has 0.09% coverage compared to the <98% later on
+```
+# Sierra Nevadas
+```{r}
+# Getting the coverage estimates for each time period
+SNB_coverage = DataInfo(SNB_df)
+range(SNB_coverage$SC); mean(SNB_coverage$SC)
+
+#now estiamte richness using coverage-based rarefaction
+#reformat again - make a list,of the species abundance distributions in each time period - 
+# this is the format needed for using coverage-based rarefaction
+SNB_list=lapply(SNB_df,as.vector)
+
+#run the coverage-based rarefaction
+out_SNB = estimateD(SNB_list, base="coverage",conf=NULL) 
+colnames(out_SNB) = c("Xbin","m","method","SC","rar_rich","rar_shan","rar_simp")
+
+print(out_SNB)
+
+SNB_i <- iNEXT(SNB_df, q=0, datatype="abundance")
+
+print(SNB_i)
+
+ggiNEXT(SNB_i, type=3, se=TRUE, facet.var="none", color.var="site", grey=FALSE)
+
+### Seems that the Sample Coverage is 93.5%
+
+
+```
+# Central Valley
+```{r}
+# Getting the coverage estimates for each time period
+CVB_coverage = DataInfo(CVB_df)
+range(CVB_coverage$SC); mean(CVB_coverage$SC)
+
+#now estiamte richness using coverage-based rarefaction
+#reformat again - make a list,of the species abundance distributions in each time period - 
+# this is the format needed for using coverage-based rarefaction
+CVB_list=lapply(CVB_df,as.vector)
+
+#run the coverage-based rarefaction
+out_CVB = estimateD(CVB_list, base="coverage",conf=NULL) 
+colnames(out_CVB) = c("Xbin","m","method","SC","rar_rich","rar_shan","rar_simp")
+
+print(out_CVB)
+
+CVB_i <- iNEXT(CVB_df, q=0, datatype="abundance")
+
+print(CVB_i)
+
+ggiNEXT(CVB_i, type=3, se=TRUE, facet.var="none", color.var="site", grey=FALSE)
+
+### Seems that the Sample Coverage is 94.6%
+
+
+```
+# Southern Bajas
+```{r}
+# Getting the coverage estimates for each time period
+SBB_coverage = DataInfo(SBB_df)
+range(SBB_coverage$SC); mean(SBB_coverage$SC)
+
+#now estiamte richness using coverage-based rarefaction
+#reformat again - make a list,of the species abundance distributions in each time period - 
+# this is the format needed for using coverage-based rarefaction
+SBB_list=lapply(SBB_df,as.vector)
+
+#run the coverage-based rarefaction
+out_SBB = estimateD(SBB_list, base="coverage",conf=NULL) 
+colnames(out_SBB) = c("Xbin","m","method","SC","rar_rich","rar_shan","rar_simp")
+
+print(out_SBB)
+
+SBB_i <- iNEXT(SBB_df, q=0, datatype="abundance")
+
+print(SBB_i)
+
+ggiNEXT(SBB_i, type=3, se=TRUE, facet.var="none", color.var="site", grey=FALSE)
+
+### Seems that the Sample Coverage is 92.7%
+
+
+```
+# Northern Basin 
+```{r}
+# Getting the coverage estimates for each time period
+NBRB_coverage = DataInfo(NBRB_df)
+range(NBRB_coverage$SC); mean(NBRB_coverage$SC)
+
+#now estiamte richness using coverage-based rarefaction
+#reformat again - make a list,of the species abundance distributions in each time period - 
+# this is the format needed for using coverage-based rarefaction
+NBRB_list=lapply(NBRB_df,as.vector)
+
+#run the coverage-based rarefaction
+out_NBRB = estimateD(NBRB_list, base="coverage",conf=NULL) 
+colnames(out_NBRB) = c("Xbin","m","method","SC","rar_rich","rar_shan","rar_simp")
+
+print(out_NBRB)
+
+NBRB_i <- iNEXT(NBRB_df, q=0, datatype="abundance")
+
+print(NBRB_i)
+
+ggiNEXT(NBRB_i, type=3, se=TRUE, facet.var="none", color.var="site", grey=FALSE)
+
+### Seems that the Sample Coverage is 87.9%
+
+
+```
+# Sonoran Desert
+```{r}
+# Getting the coverage estimates for each time period
+SDB_coverage = DataInfo(SDB_df)
+range(SDB_coverage$SC); mean(SDB_coverage$SC)
+
+#now estiamte richness using coverage-based rarefaction
+#reformat again - make a list,of the species abundance distributions in each time period - 
+# this is the format needed for using coverage-based rarefaction
+SDB_list=lapply(SDB_df,as.vector)
+
+#run the coverage-based rarefaction
+out_SDB = estimateD(SDB_list, base="coverage",conf=NULL) 
+colnames(out_SDB) = c("Xbin","m","method","SC","rar_rich","rar_shan","rar_simp")
+
+print(out_SDB)
+
+SDB_i <- iNEXT(SDB_df, q=0, datatype="abundance")
+
+print(SDB_i)
+
+ggiNEXT(SDB_i, type=3, se=TRUE, facet.var="none", color.var="site", grey=FALSE)
+
+### Seems that the Sample Coverage is 81.7%
+
+
+```
+
+# Eastern Cascades
+```{r}
+# Getting the coverage estimates for each time period
+ECSB_coverage = DataInfo(ECSB_df)
+range(ECSB_coverage$SC); mean(ECSB_coverage$SC)
+
+#now estiamte richness using coverage-based rarefaction
+#reformat again - make a list,of the species abundance distributions in each time period - 
+# this is the format needed for using coverage-based rarefaction
+ECSB_list=lapply(ECSB_df,as.vector)
+
+#run the coverage-based rarefaction
+out_ECSB = estimateD(ECSB_list, base="coverage",conf=NULL) 
+colnames(out_ECSB) = c("Xbin","m","method","SC","rar_rich","rar_shan","rar_simp")
+
+print(out_ECSB)
+
+ECSB_i <- iNEXT(ECSB_df, q=0, datatype="abundance")
+
+print(ECSB_i)
+
+ggiNEXT(ECSB_i, type=3, se=TRUE, facet.var="none", color.var="site", grey=FALSE)
+
+### Seems that the Sample Coverage is 83%
+
+
+```
+
+### Summarizing the outputs in an easier to read format
+```{r}
+range(KMB_coverage$SC); mean(KMB_coverage$SC)
+### 91.9%
+range(CRB_coverage$SC); mean(CRB_coverage$SC)
+### 97.2%
+range(MBRB_coverage$SC); mean(MBRB_coverage$SC)
+### 96.9%
+range(CBRB_coverage$SC); mean(CBRB_coverage$SC)
+### 89.5%
+range(CB_coverage$SC); mean(CB_coverage$SC)
+### 91.1%
+range(SNB_coverage$SC); mean(SNB_coverage$SC)
+### 96.6%
+range(CSHOB_coverage$SC); mean(CSHOB_coverage$SC)
+### 99.3%
+range(CVB_coverage$SC); mean(CVB_coverage$SC)
+### 97.0%
+range(SBB_coverage$SC); mean(SBB_coverage$SC)
+### 96.0%
+range(NBRB_coverage$SC); mean(NBRB_coverage$SC)
+### 88.3%
+range(SDB_coverage$SC); mean(SDB_coverage$SC)
+### 92.9%
+range(ECSB_coverage$SC); mean(ECSB_coverage$SC)
+### 83.0%
+
+
+```
+
+
+
+
+
+
 
 
 
