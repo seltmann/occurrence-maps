@@ -1,0 +1,21 @@
+---
+title: "Ecoregion_bee_model"
+author: "JT Miller"
+date: "4/10/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Lets create a dataset that describes the parameters of the ecoregions as listed: https://gaftp.epa.gov/EPADataCommons/ORD/Ecoregions/pubs/NA_TerrestrialEcoregionsLevel3_Final-2june11_CEC.pdf
+```{r}
+### Create a vector for names of the ecoregions
+ecoregion_names <- c("Cascades", "Eastern Cascades Slopes and Foothills")
+
+### Create a vector for avg percipitation of the ecoregions 
+mean_percipitation_mm <- c("1824", "649")
+
+```
+
