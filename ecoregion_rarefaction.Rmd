@@ -153,6 +153,11 @@ bees_bounded_sep <- bees_bounded %>%
   dplyr::mutate(decimalLatitude = sf::st_coordinates(.)[,2],
                 decimalLongitude = sf::st_coordinates(.)[,1])
 
+bees_bounded_sep2 <- bees_bounded_sep %>% 
+  st_drop_geometry()
+
+#write.csv(bees_bounded_sep2, "D:/CCBER/Occurrence_Maps/Bee_diversity_research/bees_combined_final.csv")
+
 
 
 ```
@@ -373,20 +378,80 @@ MBRB_df <- coverager(Mojave_Basin_and_Range_Bees, manual_qs = 8)
 CBRB_df <- coverager(Central_Basin_and_Range_Bees, manual_qs = 7)
 CB_df <- coverager(Cascades_Bees, manual_qs = 8) # Cascades
 SNB_coverage <- coverager(Sierra_Nevadas_Bees, manual_qs = 10) # Sierra Nevadas
-CSHOB_coverage <- coverager(Cali_Coastal_Sage_Chap_Oak_Woodlands_Bees, manual_qs = 7)
-CVB <- coverager(Central_Cali_Valley_Bees) 
-SBB <- coverager(Southern_and_Baja_Cali_PineOak_Mounts_Bees, manual_qs = 10)
-NBRB <- coverager(Northern_Basin_and_Range_Bees, manual_qs = 2)
-SDB <- coverager(Sonoran_Desert_Bees, manual_qs = 10)
-ECSB <- coverager(Eastern_Cascades_Slopes_and_Foothills_Bees, manual_qs = 10)
-
-
-
-
+CSHOB_df <- coverager(Cali_Coastal_Sage_Chap_Oak_Woodlands_Bees, manual_qs = 7)
+CVB_df <- coverager(Central_Cali_Valley_Bees, manual_qs = 8) 
+SBB_df <- coverager(Southern_and_Baja_Cali_PineOak_Mounts_Bees, manual_qs = 10)
+NBRB_df <- coverager(Northern_Basin_and_Range_Bees, manual_qs = 2)
+SDB_df <- coverager(Sonoran_Desert_Bees, manual_qs = 10)
+ECSB_df <- coverager(Eastern_Cascades_Slopes_and_Foothills_Bees, manual_qs = 10)
 
 
 ```
+### Now use estimateD for the ecoregions
 
+# Chapparal
+```{r}
+# Getting the coverage estimates for each time period
+CSHOB_coverage = DataInfo(CSHOB_df)
+range(CSHOB_coverage$SC); mean(CSHOB_coverage$SC)
+
+#now estiamte richness using coverage-based rarefaction
+#reformat again - make a list,of the species abundance distributions in each time period - 
+# this is the format needed for using coverage-based rarefaction
+CSHOB_list=lapply(CSHOB_df,as.vector)
+
+#run the coverage-based rarefaction
+out_CSHOB = estimateD(CSHOB_list, base="coverage",conf=NULL) 
+colnames(out_CSHOB) = c("Xbin","m","method","SC","rar_rich","rar_shan","rar_simp")
+
+print(out_CSHOB)
+
+CSHOB_i <- iNEXT(CSHOB_df, q=0, datatype="abundance")
+
+print(CSHOB_i)
+
+ggiNEXT(CSHOB_i, type=2, se=TRUE, facet.var="none", color.var="site", grey=FALSE)
+
+### Seems that there is a Sample coverage output of 98.5%
+```
+# Mojave
+```{r}
+# Getting the coverage estimates for each time period
+MBRB_coverage = DataInfo(MBRB_df)
+range(MBRB_coverage$SC); mean(MBRB_coverage$SC)
+
+#now estiamte richness using coverage-based rarefaction
+#reformat again - make a list,of the species abundance distributions in each time period - 
+# this is the format needed for using coverage-based rarefaction
+MBRB_list=lapply(MBRB_df,as.vector)
+
+#run the coverage-based rarefaction
+out_MBRB = estimateD(MBRB_list, base="coverage",conf=NULL) 
+colnames(out_MBRB) = c("Xbin","m","method","SC","rar_rich","rar_shan","rar_simp")
+
+print(out_MBRB)
+
+### Seems that the Sample Coverage is 93.8%
+```
+# Klamath 
+```{r}
+# Getting the coverage estimates for each time period
+MBRB_coverage = DataInfo(MBRB_df)
+range(MBRB_coverage$SC); mean(MBRB_coverage$SC)
+
+#now estiamte richness using coverage-based rarefaction
+#reformat again - make a list,of the species abundance distributions in each time period - 
+# this is the format needed for using coverage-based rarefaction
+MBRB_list=lapply(MBRB_df,as.vector)
+
+#run the coverage-based rarefaction
+out_MBRB = estimateD(MBRB_list, base="coverage",conf=NULL) 
+colnames(out_MBRB) = c("Xbin","m","method","SC","rar_rich","rar_shan","rar_simp")
+
+print(out_MBRB)
+
+### Seems that the Sample Coverage is 93.8%
+```
 
 
 
