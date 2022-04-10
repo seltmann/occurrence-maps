@@ -738,21 +738,137 @@ range(ECSB_coverage$SC); mean(ECSB_coverage$SC)
 ### 83.0%
 
 
+### AND 
+
+#now estiamte richness using coverage-based rarefaction
+#reformat again - make a list,of the species abundance distributions in each time period - 
+# this is the format needed for using coverage-based rarefaction
+KMB_list=lapply(KMB_df,as.vector)
+
+#run the coverage-based rarefaction
+out_KMB = estimateD(regions_list, base="coverage",conf=NULL) 
+colnames(out_regions) = c("Xbin","m","method","SC","rar_rich","rar_shan","rar_simp")
+
+#now estiamte richness using coverage-based rarefaction
+#reformat again - make a list,of the species abundance distributions in each time period - 
+# this is the format needed for using coverage-based rarefaction
+regions_list=lapply(regions_df,as.vector)
+
+#run the coverage-based rarefaction
+out_regions = estimateD(regions_list, base="coverage",conf=NULL) 
+colnames(out_regions) = c("Xbin","m","method","SC","rar_rich","rar_shan","rar_simp")
+
+
+
 ```
+### Lets conduct rarefaction all of the ecoregions first 
 
-
-
-
-
-
-
-
+# Bring the regions all back together, get rid of geometry and the missing years
 
 ```{r}
-combined_ecoregions_c <- rbind(Coast_Range_Bees_c,Central_Basin_and_Range_Bees_c,Mojave_Basin_and_Range_Bees_c,Cascades_Bees_c,Sierra_Nevadas_Bees_c,Cali_Coastal_Sage_Chap_Oak_Woodlands_Bees_c, Central_Cali_Valley_Bees_c, Southern_and_Baja_Cali_PineOak_Mounts_Bees_c,Northern_Basin_and_Range_Bees_c, Sonoran_Desert_Bees_c, Klamath_Mountains_Bees_c,Eastern_Cascades_Slopes_and_Foothills_Bees_c)
 
-combined_ecoregion_c_drop <- combined_ecoregions_c %>% 
-  filter(!is.na(year))
+CRB_drop <- Coast_Range_Bees %>% 
+  filter(!is.na(year)) %>%  # Get rid of any bees without a year
+  st_drop_geometry()
+MBRB_drop <- Mojave_Basin_and_Range_Bees %>% 
+  filter(!is.na(year)) %>%  # Get rid of any bees without a year
+  st_drop_geometry()
+CBRB_drop <- Central_Basin_and_Range_Bees %>% 
+  filter(!is.na(year)) %>%  # Get rid of any bees without a year
+  st_drop_geometry()
+CB_drop <- Cascades_Bees %>% 
+  filter(!is.na(year)) %>%  # Get rid of any bees without a year
+  st_drop_geometry()
+SNB_drop <- Sierra_Nevadas_Bees %>% 
+  filter(!is.na(year)) %>%  # Get rid of any bees without a year
+  st_drop_geometry()
+CSHOB_drop <- Cali_Coastal_Sage_Chap_Oak_Woodlands_Bees %>% 
+  filter(!is.na(year)) %>%  # Get rid of any bees without a year
+  st_drop_geometry()
+CVB_drop <- Central_Cali_Valley_Bees %>% 
+  filter(!is.na(year)) %>%  # Get rid of any bees without a year
+  st_drop_geometry()
+SBB_drop <- Southern_and_Baja_Cali_PineOak_Mounts_Bees %>% 
+  filter(!is.na(year)) %>%  # Get rid of any bees without a year
+  st_drop_geometry()
+NBRB_drop <- Northern_Basin_and_Range_Bees %>% 
+  filter(!is.na(year)) %>%  # Get rid of any bees without a year
+  st_drop_geometry()
+SDB_drop <- Sonoran_Desert_Bees %>% 
+  filter(!is.na(year)) %>%  # Get rid of any bees without a year
+  st_drop_geometry()
+ECSB_drop <- Eastern_Cascades_Slopes_and_Foothills_Bees %>% 
+  filter(!is.na(year)) %>%  # Get rid of any bees without a year
+  st_drop_geometry()
 
-combined_ecoregions <- rbind(Coast_Range_Bees,Central_Basin_and_Range_Bees,Mojave_Basin_and_Range_Bees,Cascades_Bees,Sierra_Nevadas_Bees,Cali_Coastal_Sage_Chap_Oak_Woodlands_Bees, Central_Cali_Valley_Bees, Southern_and_Baja_Cali_PineOak_Mounts_Bees,Northern_Basin_and_Range_Bees, Sonoran_Desert_Bees, Klamath_Mountains_Bees,Eastern_Cascades_Slopes_and_Foothills_Bees)
+regions_bees <- rbind(KMB_drop, CRB_drop, MBRB_drop, CBRB_drop, CB_drop, SNB_drop, CSHOB_drop, CVB_drop, SBB_drop, NBRB_drop, SDB_drop, ECSB_drop)
+
 ```
+
+### Now create the appropriate data for iNEXT abundance.
+```{r}
+regions_mat_set <-regions_bees %>% group_by(ecoregion, accepted_name) %>% 
+                          summarize(n=n()) %>% spread(accepted_name, n, fill=0)
+
+
+regions_mat <-as.data.frame(regions_mat_set)[,-1]
+
+# Reformat with bins as the columns and species as the rows for estimating coverage based rarefaction 
+regions_df = data.frame(t(regions_mat))
+
+regions_i <- iNEXT(regions_df, q=0, datatype="abundance")
+
+print(regions_i)
+
+ggiNEXT(regions_i, type=3, se=TRUE, facet.var="none", color.var="site", grey=FALSE)
+
+ggiNEXT(regions_i, type=2, se=TRUE, facet.var="none", color.var="site", grey=FALSE)
+
+ggiNEXT(regions_i, type=1, se=TRUE, facet.var="none", color.var="site", grey=FALSE) #+
+  #scale_shape_manual(values=c(19,19,19))
+
+
+regions_coverage = DataInfo(regions_df)
+
+
+range(regions_coverage$SC); mean(regions_coverage$SC)
+# The mean is 97.5%
+
+#now estiamte richness using coverage-based rarefaction
+#reformat again - make a list,of the species abundance distributions in each time period - 
+# this is the format needed for using coverage-based rarefaction
+regions_list=lapply(regions_df,as.vector)
+
+#run the coverage-based rarefaction
+out_regions = estimateD(regions_list, base="coverage",conf=NULL) 
+colnames(out_regions) = c("Xbin","m","method","SC","rar_rich","rar_shan","rar_simp")
+
+```
+```{r}
+
+ggiNEXT(regions_i, type=3, se=TRUE, facet.var="site", color.var="site", grey=FALSE)
+
+ggiNEXT(regions_i, type=1, se=TRUE, facet.var="site", color.var="site", grey=FALSE)
+
+```
+```{r}
+view_test <- rbind(MBRB_drop, SNB_drop, CSHOB_drop)
+
+view_mat_set <-view_test %>% group_by(ecoregion, accepted_name) %>% 
+                          summarize(n=n()) %>% spread(accepted_name, n, fill=0)
+
+
+view_mat <-as.data.frame(view_mat_set)[,-1]
+
+# Reformat with bins as the columns and species as the rows for estimating coverage based rarefaction 
+view_df = data.frame(t(view_mat))
+
+colnames(view_df) <- c("Chaparral", "Mojave", "Sierra Nevadas")
+
+view_i <- iNEXT(view_df, q=0, datatype="abundance")
+
+print(view_i)
+
+ggiNEXT(view_i, type=1, se=TRUE, facet.var="none", color.var="site", grey=FALSE)
+```
+
