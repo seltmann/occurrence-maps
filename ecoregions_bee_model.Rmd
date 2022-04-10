@@ -12,10 +12,16 @@ knitr::opts_chunk$set(echo = TRUE)
 ### Lets create a dataset that describes the parameters of the ecoregions as listed: https://gaftp.epa.gov/EPADataCommons/ORD/Ecoregions/pubs/NA_TerrestrialEcoregionsLevel3_Final-2june11_CEC.pdf
 ```{r}
 ### Create a vector for names of the ecoregions
-ecoregion_names <- c("Cascades", "Eastern Cascades Slopes and Foothills")
+ecoregion_names <- c("Cascades", "Eastern Cascades Slopes and Foothills", "Coast Range", "Central Basin and Range", "Mojave Basin and Range", "Sonoran Desert", "Sierra Nevada", "California Coastal Sage, Chaparral, and Oak Woodlands", "Klamath Mountains", "Southern and Baja California Pine-Oak Mountains", "Northern Basin and Range", "Central California Valley" )
 
 ### Create a vector for avg percipitation of the ecoregions 
-mean_percipitation_mm <- c("1824", "649")
+mean_percipitation_mm <- c(1824, 649, 2149, 277, 167, 206, 1070, 548, 1438, 525, 351, 125 )
+
+Rarefacted_richness_obs <- c(231, 198, 312, 432, 697, 483, 630, 991,287, 494, 49, 412 )
+Rarefacted_richness_est <- c(352, 288, 457, 577, 865, 593, 774, 1228, 372, 593, 92, 540 )
+
+### Merge them into a dataset.
+paramter_df <- data.frame(ecoregion_names, mean_percipitation_mm, Rarefacted_richness_obs, Rarefacted_richness_est)
 
 ```
 
