@@ -86,6 +86,9 @@ combined_datasets_totals <- rbind(specimen_occur_less, AMNH_specimens_simplified
 
 # NOTE: catalogNumber was again more inclusive, therefore the distinct was ran on it. 
 
+combined_unique_SP <- combined_datasets_totals %>% 
+  distinct(scientific_name, .keep_all = TRUE)
+
 combined_datasets_distinct_catalogNumber <- combined_datasets_totals %>% 
   dplyr::distinct(catalogNumber, .keep_all = TRUE) 
 ```
@@ -161,7 +164,15 @@ bees_bounded_sep <- bees_bounded %>%
 bees_bounded_sep2 <- bees_bounded_sep %>% 
   st_drop_geometry()
 
-#write.csv(bees_bounded_sep2, "D:/CCBER/Occurrence_Maps/Bee_diversity_research/bees_combined_final.csv")
+#write.csv(bees_bounded_sep2, "D:/CCBER/Occurrence_Maps/Bee_diversity_research/bees_combined_fine.csv")
+
+ggplot() +
+  geom_sf(data = eco_map, fill = "palegreen", color = "black") +
+  geom_sf(bees_bounded_sep, mapping = aes(geometry = geometry), size = 1) +
+  ggtitle("Bees in California with EcoRegions") +
+  theme_bw() +
+  theme(plot.title=element_text(hjust=0.5))
+
 
 
 
@@ -788,7 +799,37 @@ ECSB_drop <- Eastern_Cascades_Slopes_and_Foothills_Bees %>%
 
 regions_bees <- rbind(KMB_drop, CRB_drop, MBRB_drop, CBRB_drop, CB_drop, SNB_drop, CSHOB_drop, CVB_drop, SBB_drop, NBRB_drop, SDB_drop, ECSB_drop)
 
+regions_bees_t <- regions_bees %>% 
+  filter(ecoregion == "Cali_Coastal_Sage_Chap_Oak_Woodlands") %>% 
+  distinct(accepted_name, .keep_all = TRUE)
 ```
+
+```{r}
+### Count up the number of occurrences in each ecoregion
+library(calecopal)
+regions_bees_counts <- regions_bees %>% 
+  group_by(ecoregion) %>% 
+  tally()
+
+ggplot(regions_bees_counts, aes(x=ecoregion, y = n , fill = ecoregion)) +
+  geom_col(position = position_dodge2(preserve = "single")) +
+  xlab("Ecoregion") +
+  ylab("Number of Observations") +
+  scale_fill_manual(values = c("#a6cee3", "#1f78b4", "#b2df8a", "#33a02c", "#fb9a99", "#e31a1c", "#fdbf6f", "#ff7f00", "#cab2d6", "#6a3d9a", "#ffff99", "#b15928")) +
+  ggtitle("Sampling Effort in each Ecoregion") +
+  theme_bw() +
+  scale_x_discrete("Ecoregions", labels = c("Cali_Coastal_Sage_Chap_Oak_Woodlands" = "Chaparall", "	
+Cascades" = "Cascades", "Central_Basin_and_Range" =  "Central Basin", "Central_Cali_Valley" = "Central Valley", "Coast_Range" = "Coast Range", "Eastern_Cascades_Slopes_and_Foothills" = "Eastern Cascades", "Klamath_Mountains" = "Klamath Mountains", "Mojave_Basin_and_Range" = "Mojave", "Northern_Basin_and_Range" = "Northern Basin","Sierra_Nevadas" =  "Sierra Nevadas", "Sonoran_Desert" = "Sonoran Desert", "Southern_and_Baja_Cali_PineOak_Mounts" = "Baja")) +
+  theme(plot.title = element_text( hjust = 0.5), 
+        axis.text.x = element_text(angle = 45, hjust = 1), 
+        legend.position = "none")
+  
+  
+colpal_ext <- colorFactor(c("#a6cee3", "#1f78b4", "#b2df8a", "#33a02c", "#fb9a99", "#e31a1c", "#fdbf6f", "#ff7f00", "#cab2d6", "#6a3d9a", "#ffff99", "#b15928"), eco_map$NA_L3NAME)  
+  
+```
+
+
 
 ### Now create the appropriate data for iNEXT abundance.
 ```{r}
@@ -812,7 +853,9 @@ ggiNEXT(regions_i, type=3, se=TRUE, facet.var="none", color.var="site", grey=FAL
 
 ggiNEXT(regions_i, type=2, se=TRUE, facet.var="none", color.var="site", grey=FALSE)
 
-ggiNEXT(regions_i, type=1, se=TRUE, facet.var="none", color.var="site", grey=FALSE) 
+g <- ggiNEXT(regions_i, type=1, se=TRUE, facet.var="none", color.var="site", grey=FALSE) 
+
+
 
 
 regions_coverage = DataInfo(regions_df)
@@ -835,6 +878,16 @@ ecoregion_richness <- ChaoRichness(regions_df, datatype = "abundance")
 ecoregion_richness_df <- data.frame(ecoregion_richness)
 
 ```
+```{r}
+### Making nice plots 
+library(ggthemes)
+
+g + scale_shape_manual(values = c(1,2,3,4,5,6,7,8,9,10,11,12)) + theme_bw() + scale_fill_manual(values = c("#b15928", "#1f78b4", "#b2df8a", "#33a02c", "#a6cee3", "#fb9a99", "#e31a1c", "#fdbf6f", "#ff7f00", "#6a3d9a", "#cab2d6", "#ffff99")) + scale_colour_manual( values = c("#b15928", "#1f78b4", "#b2df8a", "#33a02c", "#a6cee3", "#fb9a99", "#e31a1c", "#fdbf6f", "#ff7f00", "#cab2d6", "#6a3d9a", "#ffff99"))
+
+col <- c("#fb9a99",) "#b15928", , "#6a3d9a", "#cab2d6", "#ff7f00", #fdbf6f
+##e31a1c
+##fb9a99
+```
 
 ```{r}
 ecoregion_naming <- c("Chaparral", "Cascades", "Central Basin", "Central Valley", "Coast Range", "Eastern Cascades", "Klamath Mountains", "Mojave", "Northern Basin", "Sierra Nevadas", "Sonoran Desert", "Baja")
@@ -856,5 +909,78 @@ ggplot(ecoregion_richness_p, mapping =aes(x = ecoregion_naming, y = Estimator, f
                 color="black", size=1) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1),
         plot.title = element_text( hjust = 0.5)) 
+```
+
+### An assessment on the genus Bombus
+```{r}
+# Specify that we only want to look at the bees with the genus name Bombus (Bumble bees)
+regions_bees_bomb <- regions_bees %>% 
+  filter(grepl('Bombus', accepted_name))
+
+Bombus_mat_set <-regions_bees_bomb %>% group_by(ecoregion, accepted_name) %>% 
+                          summarize(n=n()) %>% spread(accepted_name, n, fill=0)
+
+
+Bombus_mat <-as.data.frame(Bombus_mat_set)[,-1]
+
+# Reformat with bins as the columns and species as the rows for estimating coverage based rarefaction 
+Bombus_df = data.frame(t(Bombus_mat))
+
+colnames(Bombus_df) <- c("Chaparral","Cascades","Central Basin", "Central Valley", "Coast Range", "Eastern Cascades", "Klamath Mountains","Mojave", "Northern Basin","Sierra Nevadas", "Sonoran Desert", "Baja California")
+
+Bombus_i <- iNEXT(Bombus_df, q=0, datatype="abundance")
+
+
+print(Bombus_i)
+
+ggiNEXT(Bombus_i, type=3, se=TRUE, facet.var="none", color.var="site", grey=FALSE)
+
+ggiNEXT(Bombus_i, type=2, se=TRUE, facet.var="none", color.var="site", grey=FALSE)
+
+ggiNEXT(Bombus_i, type=1, se=TRUE, facet.var="none", color.var="site", grey=FALSE) 
+```
+
+```{r}
+library(car)
+library(lmtest)
+library(psych)
+Bombus_richness <- ChaoRichness(Bombus_df, datatype = "abundance")
+
+Bombus_richness_df <- data.frame(Bombus_richness)
+
+### Create a vector for lowest/highest annual temp
+lowest_mean_temp <- c(-1, 2, 7, 2, 5, 19, -3, 14, 5, 6, 5, 15)
+highest_mean_temp <- c(11, 11, 14, 14, 24, 25, 17, 18, 14, 17, 9, 19)
+
+### Create a vector for avg percipitation of the ecoregions 
+mean_percipitation_mm <- c(1824, 649, 2149, 277, 167, 206, 1070, 548, 1438, 525, 351, 125 )
+
+Bombus_w_params <- cbind(Bombus_richness_df, lowest_mean_temp, highest_mean_temp, mean_percipitation_mm)
+
+pairs.panels(Bombus_w_params, density = TRUE, cor = FALSE, lm = TRUE)
+
+
+Bombus_w_params$log_Estimator <- log(Bombus_w_params$Estimator)
+
+Bombus_w_params$log_mean_percipitation_mm <- log(Bombus_w_params$mean_percipitation_mm)
+
+Bombus_w_params$log_Estimator <- log(Bombus_w_params$Estimator)
+
+
+
+pairs.panels(Bombus_w_params, density = TRUE, cor = FALSE, lm = TRUE)
+
+
+plot(data = Bombus_w_params, log_Estimator ~ log_mean_percipitation_mm)
+
+plot(data = Bombus_w_params, log_Estimator ~ highest_mean_temp)
+
+plot(data = Bombus_w_params, log_Estimator ~ lowest_mean_temp)
+
+```
+
+```{r}
+data(spider)
+iNEXT(spider, q=0, datatype = "abundance")
 ```
 
