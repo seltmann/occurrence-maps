@@ -940,47 +940,52 @@ ggiNEXT(Bombus_i, type=2, se=TRUE, facet.var="none", color.var="site", grey=FALS
 ggiNEXT(Bombus_i, type=1, se=TRUE, facet.var="none", color.var="site", grey=FALSE) 
 ```
 
+
+
+
+
+
 ```{r}
-library(car)
-library(lmtest)
-library(psych)
-Bombus_richness <- ChaoRichness(Bombus_df, datatype = "abundance")
+mean_percipitation_mm <- c(548, 1824, 277, 125, 2149, 649, 1438, 167, 351, 1070, 206, 525 )
+lowest_mean_temp <- c(14, -1, 2, 15, 7, 19, 5, 5, 5, -3, 19, 6)
+highest_mean_temp <- c(18, 11, 14, 19, 14, 11, 14, 24, 9, 17, 25, 17)
 
-Bombus_richness_df <- data.frame(Bombus_richness)
+ecoregion_richness_p <-cbind(ecoregion_richness, ecoregion_naming)
 
-### Create a vector for lowest/highest annual temp
-lowest_mean_temp <- c(-1, 2, 7, 2, 5, 19, -3, 14, 5, 6, 5, 15)
-highest_mean_temp <- c(11, 11, 14, 14, 24, 25, 17, 18, 14, 17, 9, 19)
-
-### Create a vector for avg percipitation of the ecoregions 
-mean_percipitation_mm <- c(1824, 649, 2149, 277, 167, 206, 1070, 548, 1438, 525, 351, 125 )
-
-Bombus_w_params <- cbind(Bombus_richness_df, lowest_mean_temp, highest_mean_temp, mean_percipitation_mm)
-
-pairs.panels(Bombus_w_params, density = TRUE, cor = FALSE, lm = TRUE)
-
-
-Bombus_w_params$log_Estimator <- log(Bombus_w_params$Estimator)
-
-Bombus_w_params$log_mean_percipitation_mm <- log(Bombus_w_params$mean_percipitation_mm)
-
-Bombus_w_params$log_Estimator <- log(Bombus_w_params$Estimator)
-
-
-
-pairs.panels(Bombus_w_params, density = TRUE, cor = FALSE, lm = TRUE)
-
-
-plot(data = Bombus_w_params, log_Estimator ~ log_mean_percipitation_mm)
-
-plot(data = Bombus_w_params, log_Estimator ~ highest_mean_temp)
-
-plot(data = Bombus_w_params, log_Estimator ~ lowest_mean_temp)
-
+ecoregion_w_parms <- cbind(ecoregion_richness_p, mean_percipitation_mm, highest_mean_temp, lowest_mean_temp)
 ```
 
 ```{r}
-data(spider)
-iNEXT(spider, q=0, datatype = "abundance")
+pairs.panels(ecoregion_w_parms, density = TRUE, cor = FALSE, lm = TRUE)
+
+plot(data = ecoregion_w_parms, Estimator ~ highest_mean_temp)
+abline(lm(Estimator ~ highest_mean_temp, data = ecoregion_w_parms), col = "blue")
+
+ggplot(data = ecoregion_w_parms, aes(x = highest_mean_temp, y = Estimator)) + 
+  geom_point() +
+  theme_bw() +
+  xlab("Mean Highest Temperature") +
+  ylab("Estimated Species Richness") + 
+  ggtitle("Bee Species Richness Correlation with Mean Maximum Temperature") +
+  theme(plot.title = element_text(hjust = 0.5))
+  
+
+cor.test(ecoregion_w_parms$highest_mean_temp, ecoregion_w_parms$Estimator, method = "pearson", alternative = "two.sided")
+
+
+cor.test(ecoregion_w_parms$mean_percipitation_mm, ecoregion_w_parms$Estimator, method = "spearman", alternative = "two.sided")
+
+cor.test(ecoregion_w_parms$lowest_mean_temp, ecoregion_w_parms$Estimator, method = "spearman", alternative = "two.sided")
+```
+
+# How normal is our data?
+```{r}
+shapiro.test(ecoregion_w_parms$highest_mean_temp)
+
+shapiro.test(ecoregion_w_parms$Estimator)
+
+qqPlot(ecoregion_w_parms$highest_mean_temp)
+
+qqPlot(ecoregion_w_parms$Estimator)
 ```
 
