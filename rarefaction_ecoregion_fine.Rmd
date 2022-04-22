@@ -177,6 +177,23 @@ ggplot() +
 
 
 ```
+```{r}
+### Familys of Bees 
+bees_fams <- bees_bounded_sep %>% 
+  distinct(accepted_name, .keep_all = TRUE) %>% 
+  group_by(family) %>% 
+  tally()
+library(calecopal)
+ggplot(data = bees_fams, aes(x = family, y = n,  fill = family)) +
+  geom_col() +
+  theme_bw() +
+  ylab("Number of unique species") +
+  ggtitle("Bee Family Composition in California") +
+  scale_fill_manual(values = cal_palette("sierra1")) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        plot.title = element_text( hjust = 0.5)) 
+
+```
 
 ```{r}
 ### Parsing out the shapefiles 
@@ -849,13 +866,13 @@ regions_i <- iNEXT(regions_df, q=0, datatype="abundance")
 
 print(regions_i)
 
-ggiNEXT(regions_i, type=3, se=TRUE, facet.var="none", color.var="site", grey=FALSE)
+type3 <- ggiNEXT(regions_i, type=3, se=TRUE, facet.var="none", color.var="site", grey=FALSE)
 
-ggiNEXT(regions_i, type=2, se=TRUE, facet.var="none", color.var="site", grey=FALSE)
+type2 <- ggiNEXT(regions_i, type=2, se=TRUE, facet.var="none", color.var="site", grey=FALSE)
 
 g <- ggiNEXT(regions_i, type=1, se=TRUE, facet.var="none", color.var="site", grey=FALSE) 
 
-
+g
 
 
 regions_coverage = DataInfo(regions_df)
@@ -881,13 +898,92 @@ ecoregion_richness_df <- data.frame(ecoregion_richness)
 ```{r}
 ### Making nice plots 
 library(ggthemes)
+library(scales)
+show_col(stata_pal("s2color")(15))
+show_col(calc_pal()(12))
+
+g + scale_shape_manual(values = c(1,2,3,4,5,6,7,8,9,10,11,12)) + 
+  ggtitle("Coverage-based Rarefaction of Species Richness Curves by Ecoregion") + 
+  ylab("Species Richness") +
+  theme(plot.title = element_text( hjust = 0.5)) + 
+  theme_bw()
 
 g + scale_shape_manual(values = c(1,2,3,4,5,6,7,8,9,10,11,12)) + theme_bw() + scale_fill_manual(values = c("#b15928", "#1f78b4", "#b2df8a", "#33a02c", "#a6cee3", "#fb9a99", "#e31a1c", "#fdbf6f", "#ff7f00", "#6a3d9a", "#cab2d6", "#ffff99")) + scale_colour_manual( values = c("#b15928", "#1f78b4", "#b2df8a", "#33a02c", "#a6cee3", "#fb9a99", "#e31a1c", "#fdbf6f", "#ff7f00", "#cab2d6", "#6a3d9a", "#ffff99"))
 
 col <- c("#fb9a99",) "#b15928", , "#6a3d9a", "#cab2d6", "#ff7f00", #fdbf6f
 ##e31a1c
 ##fb9a99
+
+g + scale_shape_manual(values = c(1,2,3,4,5,6,7,8,9,10,11,12)) + theme_bw() + scale_fill_manual(values = c("#b15928", "#1f78b4", "#b2df8a", "#33a02c", "#a6cee3", "#fb9a99", "#e31a1c", "#fdbf6f", "#ff7f00", "#6a3d9a", "#cab2d6", "#ffff99")) + scale_colour_manual( values = c("#b15928", "#1f78b4", "#b2df8a", "#33a02c", "#a6cee3", "#fb9a99", "#e31a1c", "#fdbf6f", "#ff7f00", "#cab2d6", "#6a3d9a", "#ffff99"))
+
+col_basic <- c("#b15928", "#1f78b4", "#b2df8a", "#33a02c", "#a6cee3", "#fb9a99", "#e31a1c", "#fdbf6f", "#ff7f00", "#6a3d9a", "#cab2d6", "#ffff99")
+
+g + scale_shape_manual(values = c(1,2,3,4,5,6,7,8,9,10,11,12)) + theme_bw() + scale_fill_manual(values = col_basic) + scale_colour_manual( values = col_basic)
+
+type2  + scale_shape_manual(values = c(1,2,3,4,5,6,7,8,9,10,11,12)) + 
+  ggtitle("Sample Coverage by Sampling Effort") + 
+  theme(plot.title = element_text( hjust = 0.5)) + 
+  theme_bw()
+
+type3 + scale_shape_manual(values = c(1,2,3,4,5,6,7,8,9,10,11,12)) + 
+  ggtitle("Coverage-based Rarefaction of Species Richness Curves by Ecoregion") + 
+  ylab("Species Richness") +
+  theme(plot.title = element_text( hjust = 0.5)) + 
+  theme_bw()
+
+
+
+
+leaflet(eco_map) %>%
+  addPolygons(stroke = FALSE, smoothFactor = 0.2, fillOpacity = 1,
+              color = ~colors_basic(NA_L3NAME), , weight =10) %>% 
+   addProviderTiles("Esri.WorldGrayCanvas") %>% 
+  addLegend("bottomright", pal = colors_basic, values = eco_map$NA_L3NAME)
+
+colors_basic <- colorFactor(c("#00BF8A", # Sonoran Desert
+                              "#B79F00", # Cascades
+                              "#F8766D", # 
+                              "#DD8900", 
+                              "#00BF89", 
+                              "#F561E2", 
+                              "#7EAF05", 
+                              "#00B4F0", 
+                              "#F8766D", 
+                              "#C67AFF", 
+                              "#FF64B0", 
+                              "#00B936", 
+                              "#00BEC3"), eco_map$NA_L3NAME)
+                  
+                    colorFactor(c("#a6cee3", "#1f78b4", "#b2df8a", "#33a02c", "#fb9a99", "#e31a1c", "#fdbf6f", "#ff7f00", "#cab2d6", "#6a3d9a", "#ffff99", "#b15928"), eco_map$NA_L3NAME)
 ```
+
+
+```{r}
+### Make a nice ggplot to show estimated richness
+
+ggplot(data = ecoregion_w_parms, aes(x = ecoregion_naming, y = Estimator) ) + 
+  geom_col(aes(fill = ecoregion_naming)) +
+  geom_errorbar(aes(ymin = `95% Lower`, ymax = `95% Upper` ), data = ecoregion_w_parms) +
+  scale_fill_manual(values = c("#a6cee3", "#1f78b4", "#b2df8a", "#33a02c", "#fb9a99", "#e31a1c", "#fdbf6f", "#ff7f00", "#cab2d6", "#6a3d9a", "#ffff99", "#b15928"), eco_map$NA_L3NAME)
+  
+```
+
+
+
+
+
+### Making a nice table for species richness estimates
+```{r}
+library(plotly)
+
+plot_ly(
+  type = "table",
+  header = list(values = c("Ecoregion", "Estimated Species Richness", "Upper Confidence", "Lower Confidence")),
+  cells = list(values = rbind(ecoregion_w_parms$ecoregion_naming, ecoregion_w_parms$Estimator, ecoregion_w_parms$`95% Upper`, ecoregion_w_parms$`95% Lower`))
+)
+
+```
+
 
 ```{r}
 ecoregion_naming <- c("Chaparral", "Cascades", "Central Basin", "Central Valley", "Coast Range", "Eastern Cascades", "Klamath Mountains", "Mojave", "Northern Basin", "Sierra Nevadas", "Sonoran Desert", "Baja")
@@ -963,10 +1059,20 @@ abline(lm(Estimator ~ highest_mean_temp, data = ecoregion_w_parms), col = "blue"
 
 ggplot(data = ecoregion_w_parms, aes(x = highest_mean_temp, y = Estimator)) + 
   geom_point() +
+  #stat_smooth(method = "lm") +
   theme_bw() +
   xlab("Mean Highest Temperature") +
   ylab("Estimated Species Richness") + 
   ggtitle("Bee Species Richness Correlation with Mean Maximum Temperature") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+ggplot(data = ecoregion_w_parms, aes(x = mean_percipitation_mm, y = Estimator)) + 
+  geom_point() +
+  stat_smooth(method = "lm") +
+  theme_bw() +
+  xlab("Mean Percipitation") +
+  ylab("Estimated Species Richness") + 
+  ggtitle("Bee Species Richness Correlation with Mean Percipitation") +
   theme(plot.title = element_text(hjust = 0.5))
   
 
