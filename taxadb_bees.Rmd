@@ -1,0 +1,68 @@
+---
+title: "taxadb_bees"
+author: "JT Miller"
+date: '2022-06-24'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Testing out taxadb for bee taxanomic databasing.
+
+Package github documentation: https://github.com/ropensci/taxadb
+
+Working with large numbers of species/complicated taxonomic pipelines in APIs can be impractical.
+
+This package is designed to create a *local* database to preform the same tasks. 
+
+```{r}
+# Installation 
+#install.packages('taxadb')
+
+# Load the library
+library(taxadb)
+library(dplyr) # The authors like using dplyr workflow for this package
+library(readr) # Conversions to tsv for taxadb
+```
+Creating a local copy of a database
+```{r}
+td_create("itis", overwrite = FALSE) 
+
+# Overwrite is overwriting existing tables. We don't currently have any tables open so I dont suppose that it matters here.   
+
+```
+Bring in an example dataset. 
+```{r}
+mojave_bees <- read_csv("D:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/EcoRegion_Bees/Mojave_Basin_and_Range_Bees.csv")
+
+write.table(read.csv("D:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/EcoRegion_Bees/Mojave_Basin_and_Range_Bees.csv", sep=","), "D:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/EcoRegion_Bees/new-mojave.tab")
+
+# Dataset needs to be tab delimited for our purposes with this package. 
+write_tsv(mojave_bees, "D:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/EcoRegion_Bees/mojave_bees.tsv") # Conversion to tsv
+
+mojave_bees <- read.table("D:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/EcoRegion_Bees/new-mojave.tab")
+```
+scientific_name is just genus and specificEpithet combined into the same column. Here, lets see if we can use this as a comparison. 
+```{r}
+mbd <- mojave_bees %>% 
+  distinct(scientific_name, keep_all = TRUE) %>% 
+  select(scientific_name)
+
+
+# I would say this a reasonably large dataset so lets just try the package out on it. 
+
+
+
+write.table(mbd, "D:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/EcoRegion_Bees/mbd.tab")
+
+mojave.bee.list <- system.file("D:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/EcoRegion_Bees/mbd.tab", package="taxadb")
+
+mbl <- read.delim(mojave.bee.list)
+
+
+```
+
+
+
