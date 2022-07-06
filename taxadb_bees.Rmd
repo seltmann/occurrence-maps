@@ -33,36 +33,109 @@ td_create("itis", overwrite = FALSE)
 # Overwrite is overwriting existing tables. We don't currently have any tables open so I dont suppose that it matters here.   
 
 ```
-Bring in an example dataset. 
+
+
+
+
+### Lets actually use our low working example for now.
 ```{r}
-mojave_bees <- read_csv("D:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/EcoRegion_Bees/Mojave_Basin_and_Range_Bees.csv")
+# Generate a sample dataset. Here, "Andrena yumorum", "Andrena mimietica", and "Andrena mimietica falli" are all synonyms for the valid name "Andrena cerasifolii". Additionally, I included "Andrena mimetica Cockerell, 1903" which includes author and date to see how the package deals with this type of problem. 
 
-write.table(read.csv("D:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/EcoRegion_Bees/Mojave_Basin_and_Range_Bees.csv", sep=","), "D:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/EcoRegion_Bees/new-mojave.tab")
+sample_names <- read.delim("/home/jt-miller/Documents/syn-example-names", header = FALSE)
 
-# Dataset needs to be tab delimited for our purposes with this package. 
-write_tsv(mojave_bees, "D:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/EcoRegion_Bees/mojave_bees.tsv") # Conversion to tsv
+sn_names_ids <- sample_names %>% 
+  select(V2) %>% 
+  mutate(id = get_ids(V2, "itis")) # Here we're using get_ids() which takes the names and produces the ID associated with the database we are dealing with. If we wanted to go the opposite way, we could also use get_names() which will take the IDs and produce names associated with that dataset. 
 
-mojave_bees <- read.table("D:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/EcoRegion_Bees/new-mojave.tab")
+# Appears that it works, "Andrena imitatrix cresson" is not found indicating that its not found in ITIS either for being entirely unlisted, an unsupported format version of that name, or misspelled. 
+
+
+# To produce the accepted name, we can utilize the get_names() on the IDs we generated.
+sn_names_ids %>% 
+  mutate(accepted_names = get_names(id, "itis")) # Since the synonyms generated identical IDs, it matches our names to the ITIS's accepted_name "Andrena cerasifolii". Also important to notice that including the author and year for ITIS made it invalid returning an NA. 
 ```
-scientific_name is just genus and specificEpithet combined into the same column. Here, lets see if we can use this as a comparison. 
+### Now lets look at a more realistic usage of this for an analysis. 
+
+```{r eval=FALSE, include=FALSE}
+### Ignore this, I just needed to convert csv -> tsv
+### Lets bring in some bees from the Mojave Ecoregion.
+mojave_bees <- read.csv("/media/jt-miller/T7/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/EcoRegion_Bees/Mojave_Basin_and_Range_Bees.csv")
+
+### Needs to be in tsv form 
+
+write.table(read.csv("/media/jt-miller/T7/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/EcoRegion_Bees/Mojave_Basin_and_Range_Bees.csv", sep=","), "mojave-bees.tsv")
+```
+
+
 ```{r}
-mbd <- mojave_bees %>% 
-  distinct(scientific_name, keep_all = TRUE) %>% 
-  select(scientific_name)
+mojave_bees_new <- read.delim("/media/jt-miller/T7/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/EcoRegion_Bees/mojave_bees.tsv") 
+
+### Now lets apply the taxadb methods
+
+mojave_bees_ids <- mojave_bees_new %>% 
+  mutate(id = get_ids(scientific_name, "itis")) # Notice that it generates instances where two valid names were found in ITIS. This requires manual resolving in order to fix. 
+
+filter_name('Coelioxys octodentata', 'itis') %>% 
+  mutate(acceptedNameUsage = get_names(acceptedNameUsageID)) %>%  
+  select(scientificName, taxonomicStatus, acceptedNameUsage, acceptedNameUsageID)
+# Appears that the scientificName field is still maintained as "Coelioxys octodentata" while the specificEpithet field differs: "octodentatus" vs "echinatus". The IDs also differ, which is what tripped the warning in the first place. 
 
 
-# I would say this a reasonably large dataset so lets just try the package out on it. 
+### What besides our known warnings turns up as NA?
+mojave_bees_ids %>% 
+  filter(is.na(id)) 
+
+## Appears that there are 7 instances of NAs in the mojave dataset. 
+# Accounted for: "Coelioxys octodentata", "Lasioglossum imitatum", "Ceratina punctigena", "Hoplitis semirubra"
+# Unaccounted for: "Xylocopa sonorina", "Andrena w-scripta", "Lasioglossum abundipunctum"
+```
+This does make our task a bit easier. We have 7 names out of 819 to fix manually ourselves, with 3 being possible entry issues
+"Xylocopa brasilianorum sonorina" is the correct entry for "Xylocopa sonorina"
+
+"Andrena w-scripta" is a valid name...Odd
+
+"Lasioglossum abundipunctum" Not found. 
+
+### You can also use databases to explore rankings. For Example, what if we wanted to know how many accepted species names are in each bee family in the ITIS database?
+```{r}
+filter_rank(name = c("Apidae", "Megachilidae", "Halictidae", "Andrenidae", "Colletidae", "Mellitidae", "Stenotritidae"), rank = "family", provider = "itis") %>% 
+  filter(taxonomicStatus == "accepted", taxonRank == "species") %>% 
+  group_by(family) %>% 
+  count(sort = TRUE) %>% 
+  head()
+```
 
 
 
-write.table(mbd, "D:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/EcoRegion_Bees/mbd.tab")
 
-mojave.bee.list <- system.file("D:/CCBER/Occurrence_Maps/Bee_diversity_research/Outputs/EcoRegion_Bees/mbd.tab", package="taxadb")
+### If we wanted to use a direct database connection using this package. 
+```{r}
+taxa_tbl("itis") # Provides a connection to the itis database.
 
-mbl <- read.delim(mojave.bee.list)
+# Which species has the most known synonyms?
+taxa_tbl("itis") %>% 
+  count(acceptedNameUsageID, sort = TRUE) # ITIS:50 which is...
+
+get_names(50) # Well...thats fair.
+
+### Which bee has the most known synonyms?
+
+bee_fams <- c("Apidae", "Megachilidae", "Halictidae", "Andrenidae", "Colletidae", "Mellitidae", "Stenotritidae") # A vector of the bee families for our next argument of filter
+
+sample <- taxa_tbl("itis") %>% 
+  filter(family %in% bee_fams) %>% 
+  #mutate(acceptedNameUsage = get_names(acceptedNameUsageID)) %>% # Note that we cannot use this since get_names() does not work on a remote collection.
+  count(acceptedNameUsageID, sort = TRUE) %>% 
+  collect() # here we use collect to help store the variable for dplyring later on
+
+sample %>% 
+  mutate(acceptedNameUsage = get_names(acceptedNameUsageID)) # Here we finish off what we wanted to do. 
+  
 
 
 ```
+
+
 
 
 
