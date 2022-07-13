@@ -1,0 +1,170 @@
+---
+title: "Extended-Ecoregions-Analysis"
+author: "JT Miller"
+date: '2022-07-13'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### A follow up analysis looking at extending the ecoregions to include what is outside the California boundary
+
+Necessary Libraries
+```{r}
+library(sf)
+library(tidyverse)
+library(taxize)
+library(leaflet)
+library(sqldf)
+library(iNEXT)
+```
+Data pull from GBIF and AMNH   
+# GBIF DOI:  GBIF.org (13 July 2022) GBIF Occurrence Download https://doi.org/10.15468/dl.8ptsvp 
+```{r}
+# Read in the data from GBIF
+specimen_data <- read.delim(file="/media/jt-miller/T7/CCBER/Occurrence_Maps/Bee_diversity_research/Data/bee_occurrence_locality.txt",header=TRUE)
+
+# Remove data that does not have an associated genus or specificEpithet
+specimen_complete <- specimen_data %>% 
+  filter(!(genus == "")) %>% 
+  filter(!(specificEpithet == ""))
+
+# Remove data that has more than 10 m of associated reference error
+specimen_complete2 <- specimen_complete %>% 
+  filter(!((locality == "[Not Stated]")& is.na(coordinateUncertaintyInMeters)))
+
+specimen_complete3 <- specimen_complete2 %>% 
+  filter(!((coordinateUncertaintyInMeters >= 100) & is.na(locality) | locality == "" | locality == "[state]" | locality == "[no specific locality data]"))
+
+
+
+
+# Unite the genus and specificEpithet column to give a scientific name
+specimen_data_SN  <- specimen_complete3 %>% 
+  unite(scientific_name, genus, specificEpithet, sep = " ")
+
+# Remove any empty occurrenceIDs and keep only distinct values
+specimen_occur_IDed <- specimen_data_SN %>%
+  dplyr::filter(!(occurrenceID == "")) %>% 
+  dplyr::distinct(occurrenceID, .keep_all = TRUE)
+
+# Remove any empty catalogeNumbers and keep only distinct values
+specimen_occur_IDed_CatalogNumbered <- specimen_occur_IDed %>% 
+  dplyr::filter(!(catalogNumber == "")) %>% 
+  dplyr::distinct(catalogNumber, .keep_all = TRUE)
+
+# Read in the data from AMNH
+AMNH_specimens <- read.delim(file = "/media/jt-miller/T7/CCBER/Occurrence_Maps/Bee_diversity_research/Data/AMNH_occurrences.tab", header = TRUE)
+
+# Check
+AMNH_specimens_t <- AMNH_specimens %>% 
+  distinct(occurrenceID, .keep_all = TRUE) # These are equivalent, therefore no cleaning is needed on this dataset
+
+# Filter out any empty values for the same fields as the GBIF pull, and keep only distinct values for OccurID and CatalogNumber
+AMNH_specimens_complete <- AMNH_specimens %>%
+  filter(!(genus == "")) %>% 
+  filter(!(specificEpithet == "")) %>% 
+  dplyr::filter(!(occurrenceID == "")) %>% 
+  dplyr::distinct(occurrenceID, .keep_all = TRUE) %>% 
+  dplyr::filter(!(catalogNumber == "")) %>% 
+  dplyr::distinct(catalogNumber, .keep_all = TRUE)
+
+# Create a scientific name column
+AMNH_specimens_data_SN_complete  <- AMNH_specimens_complete %>% 
+  unite(scientific_name, genus, specificEpithet, sep = " ")
+
+# Remove any columns that aren't comparable between the two datasets
+AMNH_specimens_simplified <- AMNH_specimens_data_SN_complete %>% 
+  select(institutionCode, basisOfRecord,occurrenceID, catalogNumber, eventDate, year, month, day, decimalLatitude, decimalLongitude, georeferenceVerificationStatus, scientificName, kingdom, phylum, class, order, family, scientific_name, subgenus, coordinateUncertaintyInMeters, locality)
+
+specimen_occur_less<- specimen_occur_IDed_CatalogNumbered %>% 
+  select(!c(institutionID, verbatimCoordinateSystem))
+
+combined_datasets_totals <- rbind(specimen_occur_less, AMNH_specimens_simplified) 
+
+# NOTE: catalogNumber was again more inclusive, therefore the distinct was ran on it. 
+
+combined_unique_SP <- combined_datasets_totals %>% 
+  distinct(scientific_name, .keep_all = TRUE)
+
+combined_datasets_distinct_catalogNumber <- combined_datasets_totals %>% 
+  dplyr::distinct(catalogNumber, .keep_all = TRUE) 
+```
+
+Taxize the data and Left join to find and replace taxonomic mistakes.
+```{r eval=FALSE, include=FALSE}
+# Make a variable that stores the sources that can be used in the global names database
+sources <- gnr_datasources()
+
+# Subset out the sources variable to only include the id for the Discover Life Bee Species Guide, set that to the variable 'Get_Disc_Life'
+Get_Disc_Life <- sources$id[sources$title == 'Discover Life Bee Species Guide']
+
+# Do the same thing but add ITIS as a second id
+Get_Disc_Life_ITIS <- c(sources$id[sources$title == 'Discover Life Bee Species Guide'], sources$id[sources$title == 'Integrated Taxonomic Information SystemITIS'])
+
+# 
+unique_names <- combined_datasets_distinct_catalogNumber %>% 
+  distinct(scientific_name, .keep_all = TRUE)
+
+# Find the Corrected Names, use gnr_resolve to look at scientific name column and give resolved names based on the preferred source of Discover Life, and secondarily ITIS. Then change the scientific name to only include genus and specific Epithet using canonical = TRUE. 
+Corrected_Names <- gnr_resolve(sci = unique_names$scientific_name, data_source_ids = Get_Disc_Life_ITIS, preferred_data_sources = Get_Disc_Life, resolve_once = TRUE, canonical = TRUE)
+
+# Take Corrected_Names and remove any values for ____ that are 0.750 or below
+Corrected_Names_r <- Corrected_Names %>% 
+  filter(!(score == 0.750)) # Loses 38 Names that we are not confident in.
+
+# Use a left join SQL query to correct the names in our dataset (THIS NEEDS TO BE UPDATED)
+#  
+left_joined_specimens <- sqldf("SELECT DISTINCT dataset.*, real_name_map.accepted_name
+FROM combined_datasets_distinct_catalogNumber dataset 
+LEFT JOIN (SELECT DISTINCT sub_dataset.scientific_name, MAX(sub_real_names.matched_name2) accepted_name
+    FROM combined_datasets_distinct_catalogNumber sub_dataset
+    LEFT JOIN Corrected_Names_r sub_real_names ON sub_dataset.scientific_name = sub_real_names.user_supplied_name
+    GROUP BY sub_dataset.scientific_name) real_name_map ON dataset.scientific_name = real_name_map.accepted_name")
+
+
+left_joined_specimens_dropped <- left_joined_specimens %>% 
+  filter(!(is.na(accepted_name)))
+
+write.csv(left_joined_specimens_dropped, "/home/jt-miller/Documents/CCBER/occurrence-maps/Data-Outputs/US-Bees-Corrected-Names.csv")
+```
+
+Look at the level 3 ecoregions, without considering the California boundary. 
+```{r}
+# Bring in the shape file for the North American Continent, assign it the WGS84 coordinate reference system
+NA_eco_map <- sf::read_sf("/home/jt-miller/Documents/CCBER/occurrence-maps/filter_polygon/ecoregions-lvl3-NA/NA_CEC_Eco_Level3/NA_CEC_Eco_Level3.shp") %>% 
+  sf::st_transform('+proj=longlat +datum=WGS84') 
+
+# Filter out the eco_map to only include the ecoregions of interest for this study (All of those that touch California)
+cali_ecoregions <- NA_eco_map %>% 
+  filter(NA_L3NAME %in% c("Northern Basin and Range", "Central Basin and Range", "Mojave Basin and Range", "Sonoran Desert", "Baja California Desert", "California Coastal Sage, Chaparral, and Oak Woodlands", "Central California Valley", "Southern and Baja California Pine-Oak Mountains", "Sierra Nevada", "Klamath Mountains", "Coast Range", "Cascades", "Eastern Cascades Slopes and Foothills"))
+
+# Make a california boundary shp
+
+cali_boundary <- sf::read_sf("/home/jt-miller/Documents/CCBER/occurrence-maps/filter_polygon/Cali-Border/ca-state-boundary/CA_State_TIGER2016.shp") %>% 
+  sf::st_transform('+proj=longlat +datum=WGS84')
+
+# Make a color palette 
+colpal_ext <- colorFactor(c("#a6cee3", "#1f78b4", "#b2df8a", "#33a02c", "#fb9a99", "#e31a1c", "#fdbf6f", "#ff7f00", "#cab2d6", "#6a3d9a", "#ffff99", "#b15928"), cali_ecoregions$NA_L3NAME)
+
+leaflet(cali_ecoregions) %>% 
+  addPolygons(stroke = FALSE, smoothFactor = 0.2, fillOpacity = 1,
+              color = ~colpal_ext(NA_L3NAME)) %>% 
+  addPolylines(data = cali_boundary, color = "black", opacity = 1, weight = 3) %>% 
+  addProviderTiles("Esri.WorldGrayCanvas")
+# Visualization of the ecoregions
+
+colpal <- colorFactor(c("#00EDF4", "#F40000", "#D58400", "#139715", "#3740AE"), eco_map$L2_KEY)
+
+colpal_ext <- colorFactor(c("#a6cee3", "#1f78b4", "#b2df8a", "#33a02c", "#fb9a99", "#e31a1c", "#fdbf6f", "#ff7f00", "#cab2d6", "#6a3d9a", "#ffff99", "#b15928"), eco_map$NA_L3NAME)
+
+leaflet(eco_map) %>%
+  addPolygons(stroke = FALSE, smoothFactor = 0.2, fillOpacity = 1,
+              color = ~colpal_ext(NA_L3NAME)) %>% 
+   addProviderTiles("Esri.WorldGrayCanvas") %>% 
+  addLegend("bottomright", pal = colpal_ext, values = eco_map$NA_L3NAME)
+
+```
+
