@@ -24,43 +24,50 @@ Data pull from GBIF and AMNH
 # GBIF DOI:  GBIF.org (13 July 2022) GBIF Occurrence Download https://doi.org/10.15468/dl.8ptsvp 
 ```{r}
 # Read in the data from GBIF
-specimen_data <- read.delim(file="/media/jt-miller/T7/CCBER/Occurrence_Maps/Bee_diversity_research/Data/bee_occurrence_locality.txt",header=TRUE)
+specimen_data <- read.delim(file="/home/jt-miller/Documents/CCBER/occurrence-maps/Bee-Data/6-Families-Bee-Occurrences-World/Full-Data-Set-Backup/0388608-210914110416597/bee-occcurrences-worldWide-backup.txt",header=TRUE, quote = "") # Note, quote = "" is really important here, it retains ~2 million occurrence records that would otherwise be dropped. 
 
 # Remove data that does not have an associated genus or specificEpithet
 specimen_complete <- specimen_data %>% 
   filter(!(genus == "")) %>% 
   filter(!(specificEpithet == ""))
 
+rm(specimen_data)
+
 # Remove data that has more than 10 m of associated reference error
 specimen_complete2 <- specimen_complete %>% 
   filter(!((locality == "[Not Stated]")& is.na(coordinateUncertaintyInMeters)))
 
+rm(specimen_complete)
+
 specimen_complete3 <- specimen_complete2 %>% 
   filter(!((coordinateUncertaintyInMeters >= 100) & is.na(locality) | locality == "" | locality == "[state]" | locality == "[no specific locality data]"))
 
-
+rm(specimen_complete2)
 
 
 # Unite the genus and specificEpithet column to give a scientific name
 specimen_data_SN  <- specimen_complete3 %>% 
   unite(scientific_name, genus, specificEpithet, sep = " ")
 
+rm(specimen_complete3)
+
 # Remove any empty occurrenceIDs and keep only distinct values
 specimen_occur_IDed <- specimen_data_SN %>%
   dplyr::filter(!(occurrenceID == "")) %>% 
   dplyr::distinct(occurrenceID, .keep_all = TRUE)
+
+rm(specimen_data_SN)
 
 # Remove any empty catalogeNumbers and keep only distinct values
 specimen_occur_IDed_CatalogNumbered <- specimen_occur_IDed %>% 
   dplyr::filter(!(catalogNumber == "")) %>% 
   dplyr::distinct(catalogNumber, .keep_all = TRUE)
 
+rm(specimen_occur_IDed)
+
 # Read in the data from AMNH
 AMNH_specimens <- read.delim(file = "/media/jt-miller/T7/CCBER/Occurrence_Maps/Bee_diversity_research/Data/AMNH_occurrences.tab", header = TRUE)
 
-# Check
-AMNH_specimens_t <- AMNH_specimens %>% 
-  distinct(occurrenceID, .keep_all = TRUE) # These are equivalent, therefore no cleaning is needed on this dataset
 
 # Filter out any empty values for the same fields as the GBIF pull, and keep only distinct values for OccurID and CatalogNumber
 AMNH_specimens_complete <- AMNH_specimens %>%
@@ -71,9 +78,13 @@ AMNH_specimens_complete <- AMNH_specimens %>%
   dplyr::filter(!(catalogNumber == "")) %>% 
   dplyr::distinct(catalogNumber, .keep_all = TRUE)
 
+rm(AMNH_specimens)
+
 # Create a scientific name column
 AMNH_specimens_data_SN_complete  <- AMNH_specimens_complete %>% 
   unite(scientific_name, genus, specificEpithet, sep = " ")
+
+rm(AMNH_specimens_complete)
 
 # Remove any columns that aren't comparable between the two datasets
 AMNH_specimens_simplified <- AMNH_specimens_data_SN_complete %>% 
@@ -86,51 +97,12 @@ combined_datasets_totals <- rbind(specimen_occur_less, AMNH_specimens_simplified
 
 # NOTE: catalogNumber was again more inclusive, therefore the distinct was ran on it. 
 
-combined_unique_SP <- combined_datasets_totals %>% 
-  distinct(scientific_name, .keep_all = TRUE)
-
 combined_datasets_distinct_catalogNumber <- combined_datasets_totals %>% 
-  dplyr::distinct(catalogNumber, .keep_all = TRUE) 
-```
+  dplyr::distinct(catalogNumber, .keep_all = TRUE) %>%  
+  ungroup()
 
-Taxize the data and Left join to find and replace taxonomic mistakes.
-```{r eval=FALSE, include=FALSE}
-# Make a variable that stores the sources that can be used in the global names database
-sources <- gnr_datasources()
-
-# Subset out the sources variable to only include the id for the Discover Life Bee Species Guide, set that to the variable 'Get_Disc_Life'
-Get_Disc_Life <- sources$id[sources$title == 'Discover Life Bee Species Guide']
-
-# Do the same thing but add ITIS as a second id
-Get_Disc_Life_ITIS <- c(sources$id[sources$title == 'Discover Life Bee Species Guide'], sources$id[sources$title == 'Integrated Taxonomic Information SystemITIS'])
-
-# 
-unique_names <- combined_datasets_distinct_catalogNumber %>% 
-  distinct(scientific_name, .keep_all = TRUE)
-
-# Find the Corrected Names, use gnr_resolve to look at scientific name column and give resolved names based on the preferred source of Discover Life, and secondarily ITIS. Then change the scientific name to only include genus and specific Epithet using canonical = TRUE. 
-Corrected_Names <- gnr_resolve(sci = unique_names$scientific_name, data_source_ids = Get_Disc_Life_ITIS, preferred_data_sources = Get_Disc_Life, resolve_once = TRUE, canonical = TRUE)
-
-# Take Corrected_Names and remove any values for ____ that are 0.750 or below
-Corrected_Names_r <- Corrected_Names %>% 
-  filter(!(score == 0.750)) # Loses 38 Names that we are not confident in.
-
-# Use a left join SQL query to correct the names in our dataset (THIS NEEDS TO BE UPDATED)
-#  
-left_joined_specimens <- sqldf("SELECT DISTINCT dataset.*, real_name_map.accepted_name
-FROM combined_datasets_distinct_catalogNumber dataset 
-LEFT JOIN (SELECT DISTINCT sub_dataset.scientific_name, MAX(sub_real_names.matched_name2) accepted_name
-    FROM combined_datasets_distinct_catalogNumber sub_dataset
-    LEFT JOIN Corrected_Names_r sub_real_names ON sub_dataset.scientific_name = sub_real_names.user_supplied_name
-    GROUP BY sub_dataset.scientific_name) real_name_map ON dataset.scientific_name = real_name_map.accepted_name")
-
-
-left_joined_specimens_dropped <- left_joined_specimens %>% 
-  filter(!(is.na(accepted_name)))
-
-write.csv(left_joined_specimens_dropped, "/home/jt-miller/Documents/CCBER/occurrence-maps/Data-Outputs/US-Bees-Corrected-Names.csv")
-```
-
+rm(AMNH_specimens_data_SN_complete, AMNH_specimens_simplified, combined_datasets_totals, specimen_occur_IDed_CatalogNumbered, specimen_occur_less)
+``` 
 Look at the level 3 ecoregions, without considering the California boundary. 
 ```{r}
 # Bring in the shape file for the North American Continent, assign it the WGS84 coordinate reference system
@@ -156,15 +128,173 @@ leaflet(cali_ecoregions) %>%
   addProviderTiles("Esri.WorldGrayCanvas")
 # Visualization of the ecoregions
 
-colpal <- colorFactor(c("#00EDF4", "#F40000", "#D58400", "#139715", "#3740AE"), eco_map$L2_KEY)
 
-colpal_ext <- colorFactor(c("#a6cee3", "#1f78b4", "#b2df8a", "#33a02c", "#fb9a99", "#e31a1c", "#fdbf6f", "#ff7f00", "#cab2d6", "#6a3d9a", "#ffff99", "#b15928"), eco_map$NA_L3NAME)
 
-leaflet(eco_map) %>%
-  addPolygons(stroke = FALSE, smoothFactor = 0.2, fillOpacity = 1,
-              color = ~colpal_ext(NA_L3NAME)) %>% 
-   addProviderTiles("Esri.WorldGrayCanvas") %>% 
-  addLegend("bottomright", pal = colpal_ext, values = eco_map$NA_L3NAME)
+```
 
+
+```{r}
+bees_w_coords <- combined_datasets_distinct_catalogNumber %>% 
+  dplyr::filter(!is.na(decimalLatitude)|!is.na(decimalLongitude)) %>% 
+  dplyr::filter(!(decimalLongitude == "")) %>% 
+  dplyr::filter(!(decimalLatitude == ""))
+
+bees_w_coords_w_crs <- st_as_sf(bees_w_coords, coords = c('decimalLongitude', 'decimalLatitude'), crs = 4326, remove = FALSE)
+
+bees_bounded <- bees_w_coords_w_crs[cali_ecoregions,]
+
+bees_bounded <- bees_bounded %>% 
+  st_drop_geometry()
+
+unique_names <- bees_bounded %>% 
+  distinct(scientific_name, .keep_all = TRUE) 
+
+### Lets test the names that include authorship
+unique_authored_names <- bees_bounded %>% 
+  distinct(scientificName, .keep_all = TRUE)
+
+distinct_name_list <- bees_bounded %>% 
+  select(scientific_name) %>% 
+  rename(scientificName = scientific_name) 
+
+distinct_authorlist_list <- unique_authored_names %>% 
+   select(scientificName)
+
+write.csv(distinct_name_list, "/home/jt-miller/Documents/CCBER/occurrence-maps/Data-Outputs/Extended-Bee-Name-List.csv", row.names = FALSE)
+
+write.csv(distinct_authorlist_list, "/home/jt-miller/Documents/CCBER/occurrence-maps/Data-Outputs/Extended-Author-Bee-Name-List.csv", row.names = FALSE)
+```
+
+
+```{r}
+test <- read.delim("/home/jt-miller/Documents/CCBER/occurrence-maps/Data-Outputs/names-aligned(6)/names-aligned.txt")
+
+test_authorship <- read.delim ("/home/jt-miller/Documents/CCBER/occurrence-maps/Data-Outputs/names-aligned(7)/names-aligned.txt")
+
+### First lets check which of the resolvers has the highest number of matches.
+
+
+test_resolver <- test %>% 
+  mutate(resolverId = case_when(
+    str_detect(resolvedExternalId.1, "^COL") ~ "COL",
+    str_detect(resolvedExternalId.1, "discoverlife") ~ "DL",
+    str_detect(resolvedExternalId.1, "^GBIF") ~ "GBIF",
+    str_detect(resolvedExternalId.1, "^ITIS") ~ "ITIS", 
+    str_detect(resolvedExternalId.1, "^NCBI") ~ "NCBI"))
+
+resolved <- test_resolver %>% 
+  filter(!is.na(resolvedName.1)) %>% 
+  group_by(resolverId) %>% 
+  summarise(UniqueNames =n_distinct(resolvedName.1)) %>% 
+  arrange(desc(UniqueNames))
+print(resolved)
+
+match_type_counts <- test_resolver %>% 
+  filter(!is.na(resolvedName.1)) %>% 
+  group_by(resolverId) %>% 
+  count(NONE) 
+
+print(match_type_counts)
+
+match_type_counts %>% 
+  filter(!is.na(resolverId))
+
+# So what is the overall "effect" of each resolver on our dataset?
+
+match_type_counts_df <- as.data.frame(match_type_counts)
+
+ggplot(data = match_type_counts, aes(NONE, y = n, fill = resolverId)) +
+    geom_bar(stat = "identity", position = position_dodge(width = 0.9)) + 
+    xlab("Match Type") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
+
+
+# Now to check, is there a difference between my method for building scientific name columns and the traditional GBIF scientificName column?
+
+test_resolver_authored <- test_authorship %>% 
+  mutate(resolverId = case_when(
+    str_detect(resolvedExternalId.1, "^COL") ~ "COL",
+    str_detect(resolvedExternalId.1, "discoverlife") ~ "DL",
+    str_detect(resolvedExternalId.1, "^GBIF") ~ "GBIF",
+    str_detect(resolvedExternalId.1, "^ITIS") ~ "ITIS", 
+    str_detect(resolvedExternalId.1, "^NCBI") ~ "NCBI"))
+
+resolved_authored <- test_resolver_authored%>% 
+  filter(!is.na(resolvedName.1)) %>% 
+  group_by(resolverId) %>% 
+  summarise(UniqueNames =n_distinct(resolvedName.1)) %>% 
+  arrange(desc(UniqueNames))
+
+ test_resolver_authored %>% 
+  filter(!is.na(resolvedName.1)) %>% 
+  group_by(resolverId) %>% 
+  count(NONE) 
+
+print(resolved)
+print(resolved_authored)
+
+# It seems there are 11 unique species added upon...so whats the difference?
+test_r_dist <- test_resolver %>% 
+  filter(resolverId =="DL") %>% 
+  distinct(resolvedName.1, .keep_all = TRUE) %>% 
+  rename(accepted_name = resolvedName.1)
+
+author_diff <- test_resolver_authored %>% 
+  filter(resolverId == "DL") %>% 
+  distinct(resolvedName.1, .keep_all = TRUE) %>% 
+  anti_join(test_r_dist, by = "resolvedName.1")
+
+```
+
+Lets correct the names for the discover life. 
+```{r}
+left_joined_specimens <- sqldf("SELECT DISTINCT dataset.*, real_name_map.accepted_name
+FROM bees_bounded dataset 
+LEFT JOIN (SELECT DISTINCT sub_dataset.scientific_name, MAX(sub_real_names.accepted_name) accepted_name
+    FROM bees_bounded sub_dataset
+    LEFT JOIN test_r_dist sub_real_names ON sub_dataset.scientific_name = sub_real_names.providedName
+    GROUP BY sub_dataset.scientific_name) real_name_map ON dataset.scientific_name = real_name_map.accepted_name")
+```
+
+How many species are present in the extended ecoregions?
+```{r}
+# Before DL 
+bees_bounded %>% 
+  summarise(UniqueNames =n_distinct(scientific_name))
+  
+
+# After DL
+left_joined_specimens %>% 
+  summarise(UniqueNames =n_distinct(accepted_name))
+```
+
+
+
+
+Some cleanup and some writing to .csv for later. 
+```{r}
+#rm(list = ls())
+
+#write.csv("/home/jt-miller/Documents/CCBER/occurrence-maps/Data-Outputs/Extended-Bees-Accepted.csv", row.names = FALSE)
+
+
+```
+Reassign spatial data to bounded bee dataset
+```{r}
+bees <- st_as_sf(left_joined_specimens, coords = c('decimalLongitude', 'decimalLatitude'), crs = 4326)
+
+#Seperating out the shapefile by ecoregions lvl 3
+Coast_Range <- subset(cali_ecoregions, subset = NA_L3NAME == "Coast Range")
+Central_Basin_and_Range <- subset(cali_ecoregions, subset = NA_L3NAME == "Central Basin and Range")
+Mojave_Basin_and_Range <- subset(cali_ecoregions, subset = NA_L3NAME == "Mojave Basin and Range")
+Cascades <- subset(cali_ecoregions, subset = NA_L3NAME == "Cascades")
+Sierra_Nevadas <- subset(cali_ecoregions, subset = NA_L3NAME == "Sierra Nevada")
+Cali_Coastal_Sage_Chap_Oak_Woodlands <- subset(cali_ecoregions, subset = NA_L3NAME == "California Coastal Sage, Chaparral, and Oak Woodlands")
+Central_Cali_Valley <- subset(cali_ecoregions, subset = NA_L3NAME == "Central California Valley") 
+Klamath_Mountains <- subset(cali_ecoregions, subset = NA_L3NAME == "Klamath Mountains")
+Southern_and_Baja_Cali_PineOak_Mounts <- subset(cali_ecoregions, subset = NA_L3NAME == "Southern and Baja California Pine-Oak Mountains")
+Northern_Basin_and_Range <- subset(cali_ecoregions, subset = NA_L3NAME == "Northern Basin and Range")
+Sonoran_Desert <- subset(cali_ecoregions, subset = NA_L3NAME == "Sonoran Desert")
+Eastern_Cascades_Slopes_and_Foothills <- subset(cali_ecoregions, subset = NA_L3NAME == "Eastern Cascades Slopes and Foothills")
 ```
 
