@@ -125,7 +125,8 @@ leaflet(cali_ecoregions) %>%
   addPolygons(stroke = FALSE, smoothFactor = 0.2, fillOpacity = 1,
               color = ~colpal_ext(NA_L3NAME)) %>% 
   addPolylines(data = cali_boundary, color = "black", opacity = 1, weight = 3) %>% 
-  addProviderTiles("Esri.WorldGrayCanvas")
+  addProviderTiles("Esri.WorldGrayCanvas") %>% 
+  addLegend("bottomright", pal = colpal_ext, values = cali_ecoregions$NA_L3NAME)
 # Visualization of the ecoregions
 
 
@@ -296,5 +297,195 @@ Southern_and_Baja_Cali_PineOak_Mounts <- subset(cali_ecoregions, subset = NA_L3N
 Northern_Basin_and_Range <- subset(cali_ecoregions, subset = NA_L3NAME == "Northern Basin and Range")
 Sonoran_Desert <- subset(cali_ecoregions, subset = NA_L3NAME == "Sonoran Desert")
 Eastern_Cascades_Slopes_and_Foothills <- subset(cali_ecoregions, subset = NA_L3NAME == "Eastern Cascades Slopes and Foothills")
+
+# Filtering down the bees to their respective regions. 
+Coast_Range_Bees <- bees[Coast_Range,]
+Central_Basin_and_Range_Bees <- bees[Central_Basin_and_Range,]
+Mojave_Basin_and_Range_Bees <- bees[Mojave_Basin_and_Range,]
+Cascades_Bees <- bees[Cascades,]
+Sierra_Nevadas_Bees <- bees[Sierra_Nevadas,]
+Cali_Coastal_Sage_Chap_Oak_Woodlands_Bees <- bees[Cali_Coastal_Sage_Chap_Oak_Woodlands,]
+Central_Cali_Valley_Bees <- bees[Central_Cali_Valley,]
+Klamath_Mountains_Bees <- bees[Klamath_Mountains,]
+Southern_and_Baja_Cali_PineOak_Mounts_Bees <- bees[Southern_and_Baja_Cali_PineOak_Mounts,]
+Northern_Basin_and_Range_Bees <- bees[Northern_Basin_and_Range,]
+Sonoran_Desert_Bees <- bees[Sonoran_Desert,]
+Eastern_Cascades_Slopes_and_Foothills_Bees <- bees[Eastern_Cascades_Slopes_and_Foothills,]
+
+# And Assign a new column labeling the ecoregion's name 
+Klamath_Mountains_Bees$ecoregion <- 'Klamath_Mountains' # Give the ecoregion a name
+Coast_Range_Bees$ecoregion <- 'Coast_Range'
+Central_Basin_and_Range_Bees$ecoregion <- 'Central_Basin_and_Range'
+Mojave_Basin_and_Range_Bees$ecoregion <- 'Mojave_Basin_and_Range'
+Cascades_Bees$ecoregion <- 'Cascades'
+Sierra_Nevadas_Bees$ecoregion <- 'Sierra_Nevadas'
+Cali_Coastal_Sage_Chap_Oak_Woodlands_Bees$ecoregion <- 'Cali_Coastal_Sage_Chap_Oak_Woodlands'
+Central_Cali_Valley_Bees$ecoregion <- 'Central_Cali_Valley'
+Southern_and_Baja_Cali_PineOak_Mounts_Bees$ecoregion <- 'Southern_and_Baja_Cali_PineOak_Mounts'
+Northern_Basin_and_Range_Bees$ecoregion <- 'Northern_Basin_and_Range'
+Sonoran_Desert_Bees$ecoregion <- 'Sonoran_Desert'
+Eastern_Cascades_Slopes_and_Foothills_Bees$ecoregion <- 'Eastern_Cascades_Slopes_and_Foothills'
+
+# Drop anything that does not contain a year 
+KMB_drop <- Klamath_Mountains_Bees %>% 
+  filter(!is.na(year)) %>%  # Get rid of any bees without a year
+  st_drop_geometry()
+CRB_drop <- Coast_Range_Bees %>% 
+  filter(!is.na(year)) %>%  # Get rid of any bees without a year
+  st_drop_geometry()
+MBRB_drop <- Mojave_Basin_and_Range_Bees %>% 
+  filter(!is.na(year)) %>%  # Get rid of any bees without a year
+  st_drop_geometry()
+CBRB_drop <- Central_Basin_and_Range_Bees %>% 
+  filter(!is.na(year)) %>%  # Get rid of any bees without a year
+  st_drop_geometry()
+CB_drop <- Cascades_Bees %>% 
+  filter(!is.na(year)) %>%  # Get rid of any bees without a year
+  st_drop_geometry()
+SNB_drop <- Sierra_Nevadas_Bees %>% 
+  filter(!is.na(year)) %>%  # Get rid of any bees without a year
+  st_drop_geometry()
+CSHOB_drop <- Cali_Coastal_Sage_Chap_Oak_Woodlands_Bees %>% 
+  filter(!is.na(year)) %>%  # Get rid of any bees without a year
+  st_drop_geometry()
+CVB_drop <- Central_Cali_Valley_Bees %>% 
+  filter(!is.na(year)) %>%  # Get rid of any bees without a year
+  st_drop_geometry()
+SBB_drop <- Southern_and_Baja_Cali_PineOak_Mounts_Bees %>% 
+  filter(!is.na(year)) %>%  # Get rid of any bees without a year
+  st_drop_geometry()
+NBRB_drop <- Northern_Basin_and_Range_Bees %>% 
+  filter(!is.na(year)) %>%  # Get rid of any bees without a year
+  st_drop_geometry()
+SDB_drop <- Sonoran_Desert_Bees %>% 
+  filter(!is.na(year)) %>%  # Get rid of any bees without a year
+  st_drop_geometry()
+ECSB_drop <- Eastern_Cascades_Slopes_and_Foothills_Bees %>% 
+  filter(!is.na(year)) %>%  # Get rid of any bees without a year
+  st_drop_geometry()
+
+# And bring them back into one dataframe
+regions_bees <- rbind(KMB_drop, CRB_drop, MBRB_drop, CBRB_drop, CB_drop, SNB_drop, CSHOB_drop, CVB_drop, SBB_drop, NBRB_drop, SDB_drop, ECSB_drop)
+
+```
+
+INEXT Rarefraction
+```{r}
+regions_mat_set <-regions_bees %>% group_by(ecoregion, accepted_name) %>% 
+                          summarize(n=n()) %>% spread(accepted_name, n, fill=0)
+
+regions_mat <-as.data.frame(regions_mat_set)[,-1]
+
+# Reformat with bins as the columns and species as the rows for estimating coverage based rarefaction 
+regions_df = data.frame(t(regions_mat))
+
+colnames(regions_df) <- c("Chaparral","Cascades","Central Basin", "Central Valley", "Coast Range", "Eastern Cascades", "Klamath Mountains","Mojave", "Northern Basin","Sierra Nevadas", "Sonoran Desert", "Baja California")
+
+regions_i <- iNEXT(regions_df, q=0, datatype="abundance")
+
+
+print(regions_i)
+
+type3 <- ggiNEXT(regions_i, type=3, se=TRUE, facet.var="none", color.var="site", grey=FALSE)
+
+type2 <- ggiNEXT(regions_i, type=2, se=TRUE, facet.var="none", color.var="site", grey=FALSE)
+
+g <- ggiNEXT(regions_i, type=1, se=TRUE, facet.var="none", color.var="site", grey=FALSE) 
+
+g
+
+
+regions_coverage = DataInfo(regions_df)
+
+
+range(regions_coverage$SC); mean(regions_coverage$SC)
+# The mean is 97.5%
+
+#now estiamte richness using coverage-based rarefaction
+#reformat again - make a list,of the species abundance distributions in each time period - 
+# this is the format needed for using coverage-based rarefaction
+regions_list=lapply(regions_df,as.vector)
+
+#run the coverage-based rarefaction
+out_regions = estimateD(regions_list, base="coverage",conf=NULL) 
+colnames(out_regions) = c("Xbin","m","method","SC","rar_rich","rar_shan","rar_simp")
+
+ecoregion_richness <- ChaoRichness(regions_df, datatype = "abundance")
+
+ecoregion_richness_df <- data.frame(ecoregion_richness)
+```
+### Enviromental Variables
+```{r}
+# Measure of ecoregion richness 
+ecoregion_richness <- ChaoRichness(regions_df, datatype = "abundance")
+# Name Column
+ecoregion_naming <- c("Chaparral", "Cascades", "Central Basin", "Central Valley", "Coast Range", "Eastern Cascades", "Klamath Mountains", "Mojave", "Northern Basin", "Sierra Nevadas", "Sonoran Desert", "Baja")
+
+# Estimated Richness of each ecoregion with the names
+ecoregion_richness_p <-cbind(ecoregion_richness, ecoregion_naming)
+
+# Enviromental Parameters
+mean_percipitation_mm <- c(548, 1824, 277, 125, 2149, 649, 1438, 167, 351, 1070, 206, 525 )
+lowest_mean_temp <- c(14, -1, 2, 15, 7, 19, 5, 5, 5, -3, 19, 6)
+highest_mean_temp <- c(18, 11, 14, 19, 14, 11, 14, 24, 9, 17, 25, 17)
+
+ecoregion_richness_p <-cbind(ecoregion_richness, ecoregion_naming)
+
+ecoregion_w_parms <- cbind(ecoregion_richness_p, mean_percipitation_mm, highest_mean_temp, lowest_mean_temp)
+
+```
+
+```{r}
+ggplot(data = ecoregion_w_parms, aes(x = highest_mean_temp, y = Estimator)) + 
+  geom_point() +
+  #stat_smooth(method = "lm") +
+  theme_bw() +
+  xlab("Mean Highest Temperature") +
+  ylab("Estimated Species Richness") + 
+  ggtitle("Bee Species Richness Correlation with Mean Maximum Temperature") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+ggplot(data = ecoregion_w_parms, aes(x = lowest_mean_temp, y = Estimator)) + 
+  geom_point() +
+  #stat_smooth(method = "lm") +
+  theme_bw() +
+  xlab("Mean Lowest Temperature") +
+  ylab("Estimated Species Richness") + 
+  ggtitle("Bee Species Richness Correlation with Mean Lowest Temperature") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+ggplot(data = ecoregion_w_parms, aes(x = mean_percipitation_mm, y = Estimator)) + 
+  geom_point() +
+  stat_smooth(method = "lm") +
+  theme_bw() +
+  xlab("Mean Percipitation") +
+  ylab("Estimated Species Richness") + 
+  ggtitle("Bee Species Richness Correlation with Mean Percipitation") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+```
+Statistical Tests 
+```{r}
+library(psych)
+library(EnvStats)
+# Is our data normally distributed?
+shapiro.test(ecoregion_w_parms$highest_mean_temp)
+
+shapiro.test(ecoregion_w_parms$Estimator)
+
+shapiro.test(ecoregion_w_parms$mean_percipitation_mm) # Does not PASS
+
+qqPlot(ecoregion_w_parms$highest_mean_temp, add.line = TRUE)
+
+qqPlot(ecoregion_w_parms$Estimator, add.line = TRUE)
+
+qqPlot(ecoregion_w_parms$mean_percipitation_mm, add.line = TRUE)
+
+
+
+# Run the correlation tests
+cor.test(ecoregion_w_parms$highest_mean_temp, ecoregion_w_parms$Estimator, method = "pearson", alternative = "two.sided")
+
+cor.test(ecoregion_w_parms$mean_percipitation_mm, ecoregion_w_parms$Estimator, method = "spearman", alternative = "two.sided")
 ```
 
